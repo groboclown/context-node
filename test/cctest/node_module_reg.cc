@@ -14,6 +14,7 @@ void _register_module_wrap() {}
 void _register_os() {}
 void _register_pipe_wrap() {}
 void _register_process_wrap() {}
+void _register_promise_context() {}
 void _register_serdes() {}
 void _register_signal_wrap() {}
 void _register_spawn_sync() {}

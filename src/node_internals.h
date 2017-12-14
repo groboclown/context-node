@@ -115,6 +115,7 @@ struct sockaddr;
     V(performance)                                                            \
     V(pipe_wrap)                                                              \
     V(process_wrap)                                                           \
+    V(promise_context)                                                        \
     V(serdes)                                                                 \
     V(signal_wrap)                                                            \
     V(spawn_sync)                                                             \
