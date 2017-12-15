@@ -54,6 +54,7 @@
       'lib/path.js',
       'lib/perf_hooks.js',
       'lib/process.js',
+      'lib/promise_context.js',
       'lib/punycode.js',
       'lib/querystring.js',
       'lib/readline.js',
