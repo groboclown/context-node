@@ -26,7 +26,7 @@
 
 #include "node.h"
 // ClientHelloParser
-#include "node_crypto_clienthello-inl.h"
+#include "node_crypto_clienthello.h"
 
 #include "node_buffer.h"
 
@@ -432,19 +432,7 @@ class Connection : public AsyncWrap, public SSLWrap<Connection> {
   Connection(Environment* env,
              v8::Local<v8::Object> wrap,
              SecureContext* sc,
-             SSLWrap<Connection>::Kind kind)
-      : AsyncWrap(env, wrap, AsyncWrap::PROVIDER_SSLCONNECTION),
-        SSLWrap<Connection>(env, sc, kind),
-        bio_read_(nullptr),
-        bio_write_(nullptr),
-        hello_offset_(0) {
-    MakeWeak<Connection>(this);
-    Wrap(wrap, this);
-    hello_parser_.Start(SSLWrap<Connection>::OnClientHello,
-                        OnClientHelloParseEnd,
-                        this);
-    enable_session_callbacks();
-  }
+             SSLWrap<Connection>::Kind kind);
 
  private:
   static void SSLInfoCallback(const SSL *ssl, int where, int ret);
@@ -712,7 +700,7 @@ class DiffieHellman : public BaseObject {
                        const BIGNUM* (*get_field)(const DH*),
                        const char* err_if_null);
   static void SetKey(const v8::FunctionCallbackInfo<v8::Value>& args,
-                     void (*set_field)(DH*, BIGNUM*), const char* what);
+                     int (*set_field)(DH*, BIGNUM*), const char* what);
   bool VerifyContext();
 
   bool initialised_;

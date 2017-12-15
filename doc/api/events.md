@@ -409,7 +409,7 @@ added: v0.3.0
 * `eventName` {any} The name of the event.
 * `listener` {Function} The callback function
 
-Adds a **one time** `listener` function for the event named `eventName`. The
+Adds a **one-time** `listener` function for the event named `eventName`. The
 next time `eventName` is triggered, this listener is removed and then invoked.
 
 ```js
@@ -464,7 +464,7 @@ added: v6.0.0
 * `eventName` {any} The name of the event.
 * `listener` {Function} The callback function
 
-Adds a **one time** `listener` function for the event named `eventName` to the
+Adds a **one-time** `listener` function for the event named `eventName` to the
 *beginning* of the listeners array. The next time `eventName` is triggered, this
 listener is removed, and then invoked.
 
@@ -573,6 +573,39 @@ specific `EventEmitter` instance. The value can be set to `Infinity` (or `0`)
 to indicate an unlimited number of listeners.
 
 Returns a reference to the `EventEmitter`, so that calls can be chained.
+
+### emitter.rawListeners(eventName)
+<!-- YAML
+added: REPLACEME
+-->
+- `eventName` {any}
+
+Returns a copy of the array of listeners for the event named `eventName`,
+including any wrappers (such as those created by `.once`).
+
+```js
+const emitter = new EventEmitter();
+emitter.once('log', () => console.log('log once'));
+
+// Returns a new Array with a function `onceWrapper` which has a property
+// `listener` which contains the original listener bound above
+const listeners = emitter.rawListeners('log');
+const logFnWrapper = listeners[0];
+
+// logs "log once" to the console and does not unbind the `once` event
+logFnWrapper.listener();
+
+// logs "log once" to the console and removes the listener
+logFnWrapper();
+
+emitter.on('log', () => console.log('log persistently'));
+// will return a new Array with a single function bound by `on` above
+const newListeners = emitter.rawListeners('log');
+
+// logs "log persistently" twice
+newListeners[0]();
+emitter.emit('log');
+```
 
 [`--trace-warnings`]: cli.html#cli_trace_warnings
 [`EventEmitter.defaultMaxListeners`]: #events_eventemitter_defaultmaxlisteners
