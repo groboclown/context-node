@@ -34,7 +34,7 @@ public:
   ActivePromise(Environment* env, uint32_t promise_id, Local<Promise> promise, Local<Value> parent);
   ~ActivePromise();
 
-  inline bool is_match(Local<Promise> promise) const { return promise_.Get(isolate_) == promise; }
+  inline bool is_match(Local<Promise> const& promise) const { return promise_.Get(isolate_) == promise; }
   inline bool has_parent() const { return !parent_.IsEmpty(); }
   void add_match(Local<Value>& new_parent);
 
@@ -82,19 +82,19 @@ private:
 
   void add_active_promise(Local<Promise> promise,
                           Local<Value> parent);
-  bool remove_active_promise(Local<Promise> promise);
-  void push_promise(Local<Promise> promise);
-  bool pop_promise(Local<Promise> promise);
+  bool remove_active_promise(Local<Promise>& promise);
+  void push_promise(Local<Promise>& promise);
+  bool pop_promise(Local<Promise>& promise);
 
-  // These methods return a loaned pointer.  The memory is still owned
-  // by the active_promises_ list.  The memory should be considered
-  // valid only from within the caller's function.
+  // The ActivePromise instances are owned entirely by the
+  // active_promises_ vector.  Calls to the peek and get functions return
+  // a pointer that is only valid for the scope of the caller.
   ActivePromise* peek_promise();
   ActivePromise* get_parent(const ActivePromise* active_promise);
   ActivePromise* get_promise_for_id(const uint32_t promise_id);
-  ActivePromise* get_for_promise(const Local<Promise> promise);
+  ActivePromise* get_for_promise(const Local<Promise>& promise);
 
-  std::vector<ActivePromise*> active_promises_;
+  std::vector< std::unique_ptr<ActivePromise> > active_promises_;
   std::vector<uint32_t> promise_stack_;
   bool initialized_ = false;
   Local<Object> object_;
@@ -257,8 +257,7 @@ void PromiseContext::promise_hook_func(PromiseHookType type,
 
 PromiseContext::PromiseContext(Environment* env,
                                Local<Object> object)
-    :
-      BaseObject(env, object) {
+    : BaseObject(env, object) {
   Wrap(object, this);
 }
 
@@ -290,41 +289,42 @@ void PromiseContext::add_active_promise(Local<Promise> promise,
   }
   auto it = std::find_if(
       active_promises_.begin(), active_promises_.end(),
-      [&](const ActivePromise* ac) {
-        return ac->is_match(promise);
+      [&](const std::unique_ptr<ActivePromise>& ac) {
+        return ac.get()->is_match(promise);
       });
   if (it != active_promises_.end()) {
     printf("[DEBUG] - promise added to existing id %d\n", (*it)->id());
-    (*it)->add_match(parent);
+    it->get()->add_match(parent);
     return;
   }
-  active_promises_.push_back(new ActivePromise(env(), ++promise_count_, promise, parent));
+  active_promises_.push_back(
+    std::unique_ptr<ActivePromise>(
+      new ActivePromise(env(), ++promise_count_, promise, parent)));
   printf("[DEBUG] - promise assigned id %d\n", promise_count_);
 }
 
 
-bool PromiseContext::remove_active_promise(Local<Promise> promise) {
+bool PromiseContext::remove_active_promise(Local<Promise>& promise) {
   printf("[DEBUG] Removing active promise\n");
   auto it = std::find_if(
       active_promises_.begin(), active_promises_.end(),
-      [&](const ActivePromise* ac) {
-        return ac->is_match(promise);
+      [&](const std::unique_ptr<ActivePromise>& ac) {
+        return ac.get()->is_match(promise);
       });
 
   if (it == active_promises_.end()) return false;
 
-  if ((*it)->remove_match()) {
+  if (it->get()->remove_match()) {
     printf("[DEBUG] - removed %d\n", (*it)->id());
-    delete *it;
     active_promises_.erase(it);
   } else {
-    printf("[DEBUG] - decremented count for %d\n", (*it)->id());
+    printf("[DEBUG] - decremented count for %d\n", it->get()->id());
   }
   return true;
 }
 
 
-void PromiseContext::push_promise(Local<Promise> promise) {
+void PromiseContext::push_promise(Local<Promise>& promise) {
   printf("[DEBUG] pushed promise on stack\n");
   ActivePromise* active_promise = get_for_promise(promise);
   if (active_promise == nullptr) {
@@ -336,7 +336,7 @@ void PromiseContext::push_promise(Local<Promise> promise) {
 }
 
 
-bool PromiseContext::pop_promise(Local<Promise> promise) {
+bool PromiseContext::pop_promise(Local<Promise>& promise) {
   if (promise_stack_.size() <= 0) {
     printf("[DEBUG] tried to pop from an empty stack\n");
     return false;
@@ -370,15 +370,15 @@ ActivePromise* PromiseContext::peek_promise() {
 ActivePromise* PromiseContext::get_promise_for_id(const uint32_t promise_id) {
   auto it = std::find_if(
       active_promises_.begin(), active_promises_.end(),
-      [&](const ActivePromise* ac) {
-        return ac->id() == promise_id;
+      [&](const std::unique_ptr<ActivePromise>& ac) {
+        return ac.get()->id() == promise_id;
       });
   if (it == active_promises_.end()) {
     printf("[DEBUG] could not find registered promise %d\n", promise_id);
     return nullptr;
   }
   printf("[DEBUG] found promise with id %d\n", promise_id);
-  return *it;
+  return it->get();
 }
 
 
@@ -391,7 +391,7 @@ ActivePromise* PromiseContext::get_parent(const ActivePromise* active_promise) {
 }
 
 
-ActivePromise* PromiseContext::get_for_promise(const Local<Promise> promise) {
+ActivePromise* PromiseContext::get_for_promise(const Local<Promise>& promise) {
   // This initial check shouldn't be necessary.
   if (promise->IsUndefined() || promise->IsNull()) {
     printf("[DEBUG] getting null promise\n");
@@ -400,14 +400,14 @@ ActivePromise* PromiseContext::get_for_promise(const Local<Promise> promise) {
 
   auto it = std::find_if(
       active_promises_.begin(), active_promises_.end(),
-      [&](const ActivePromise* ac) {
-        return ac->is_match(promise);
+      [&](const std::unique_ptr<ActivePromise>& ac) {
+        return ac.get()->is_match(promise);
       });
   if (it == active_promises_.end()) {
     printf("[DEBUG] promise is not registered\n");
     return nullptr;
   }
-  return *it;
+  return it->get();
 }
 
 
