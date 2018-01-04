@@ -623,7 +623,7 @@ pipes between the parent and child. The value is one of the following:
    have an underlying descriptor (file streams do not until the `'open'`
    event has occurred).
 5. Positive integer - The integer value is interpreted as a file descriptor
-   that is is currently open in the parent process. It is shared with the child
+   that is currently open in the parent process. It is shared with the child
    process, similar to how {Stream} objects can be shared.
 6. `null`, `undefined` - Use default value. For stdio fds 0, 1, and 2 (in other
    words, stdin, stdout, and stderr) a pipe is created. For fd 3 and up, the
@@ -980,7 +980,7 @@ added: v0.1.90
 
 * `signal` {string}
 
-The `subprocess.kill()` methods sends a signal to the child process. If no
+The `subprocess.kill()` method sends a signal to the child process. If no
 argument is given, the process will be sent the `'SIGTERM'` signal. See
 signal(7) for a list of available signals.
 

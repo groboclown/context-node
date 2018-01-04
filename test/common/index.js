@@ -21,6 +21,7 @@
 
 /* eslint-disable required-modules, crypto-check */
 'use strict';
+const process = global.process;  // Some tests tamper with the process global.
 const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
@@ -69,7 +70,6 @@ exports.enoughTestCpu = Array.isArray(cpus) &&
                         (cpus.length > 1 || cpus[0].speed > 999);
 
 exports.rootDir = exports.isWindows ? 'c:\\' : '/';
-exports.projectDir = path.resolve(__dirname, '..', '..');
 
 exports.buildType = process.config.target_defaults.default_configuration;
 
@@ -788,23 +788,24 @@ exports.skipIf32Bits = function skipIf32Bits() {
   }
 };
 
-const arrayBufferViews = [
-  Int8Array,
-  Uint8Array,
-  Uint8ClampedArray,
-  Int16Array,
-  Uint16Array,
-  Int32Array,
-  Uint32Array,
-  Float32Array,
-  Float64Array,
-  DataView
-];
-
 exports.getArrayBufferViews = function getArrayBufferViews(buf) {
   const { buffer, byteOffset, byteLength } = buf;
 
   const out = [];
+
+  const arrayBufferViews = [
+    Int8Array,
+    Uint8Array,
+    Uint8ClampedArray,
+    Int16Array,
+    Uint16Array,
+    Int32Array,
+    Uint32Array,
+    Float32Array,
+    Float64Array,
+    DataView
+  ];
+
   for (const type of arrayBufferViews) {
     const { BYTES_PER_ELEMENT = 1 } = type;
     if (byteLength % BYTES_PER_ELEMENT === 0) {
@@ -822,23 +823,6 @@ exports.getBufferSources = function getBufferSources(buf) {
 exports.crashOnUnhandledRejection = function() {
   process.on('unhandledRejection',
              (err) => process.nextTick(() => { throw err; }));
-};
-
-exports.getTTYfd = function getTTYfd() {
-  const tty = require('tty');
-  let tty_fd = 0;
-  if (!tty.isatty(tty_fd)) tty_fd++;
-  else if (!tty.isatty(tty_fd)) tty_fd++;
-  else if (!tty.isatty(tty_fd)) tty_fd++;
-  else {
-    try {
-      tty_fd = fs.openSync('/dev/tty');
-    } catch (e) {
-      // There aren't any tty fd's available to use.
-      return -1;
-    }
-  }
-  return tty_fd;
 };
 
 // Hijack stdout and stderr
@@ -869,12 +853,3 @@ exports.hijackStdout = hijackStdWritable.bind(null, 'stdout');
 exports.hijackStderr = hijackStdWritable.bind(null, 'stderr');
 exports.restoreStdout = restoreWritable.bind(null, 'stdout');
 exports.restoreStderr = restoreWritable.bind(null, 'stderr');
-
-let fd = 2;
-exports.firstInvalidFD = function firstInvalidFD() {
-  // Get first known bad file descriptor.
-  try {
-    while (fs.fstatSync(++fd));
-  } catch (e) {}
-  return fd;
-};

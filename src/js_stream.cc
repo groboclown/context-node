@@ -169,17 +169,6 @@ void JSStream::New(const FunctionCallbackInfo<Value>& args) {
 }
 
 
-void JSStream::DoAfterWrite(const FunctionCallbackInfo<Value>& args) {
-  JSStream* wrap;
-  CHECK(args[0]->IsObject());
-  WriteWrap* w;
-  ASSIGN_OR_RETURN_UNWRAP(&wrap, args.Holder());
-  ASSIGN_OR_RETURN_UNWRAP(&w, args[0].As<Object>());
-
-  w->Done(0);
-}
-
-
 template <class Wrap>
 void JSStream::Finish(const FunctionCallbackInfo<Value>& args) {
   Wrap* w;
@@ -201,14 +190,14 @@ void JSStream::ReadBuffer(const FunctionCallbackInfo<Value>& args) {
   do {
     uv_buf_t buf;
     ssize_t avail = len;
-    wrap->OnAlloc(len, &buf);
+    wrap->EmitAlloc(len, &buf);
     if (static_cast<ssize_t>(buf.len) < avail)
       avail = buf.len;
 
     memcpy(buf.base, data, avail);
     data += avail;
     len -= avail;
-    wrap->OnRead(avail, &buf);
+    wrap->EmitRead(avail, &buf);
   } while (len != 0);
 }
 
@@ -217,7 +206,7 @@ void JSStream::EmitEOF(const FunctionCallbackInfo<Value>& args) {
   JSStream* wrap;
   ASSIGN_OR_RETURN_UNWRAP(&wrap, args.Holder());
 
-  wrap->OnRead(UV_EOF, nullptr);
+  wrap->EmitRead(UV_EOF, nullptr);
 }
 
 
@@ -234,7 +223,6 @@ void JSStream::Initialize(Local<Object> target,
 
   AsyncWrap::AddWrapMethods(env, t);
 
-  env->SetProtoMethod(t, "doAfterWrite", DoAfterWrite);
   env->SetProtoMethod(t, "finishWrite", Finish<WriteWrap>);
   env->SetProtoMethod(t, "finishShutdown", Finish<ShutdownWrap>);
   env->SetProtoMethod(t, "readBuffer", ReadBuffer);

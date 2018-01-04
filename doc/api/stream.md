@@ -63,8 +63,8 @@ object mode is not safe.
 <!--type=misc-->
 
 Both [Writable][] and [Readable][] streams will store data in an internal
-buffer that can be retrieved using `writable._writableState.getBuffer()` or
-`readable._readableState.buffer`, respectively.
+buffer that can be retrieved using `writable.writableBuffer` or
+`readable.readableBuffer`, respectively.
 
 The amount of data potentially buffered depends on the `highWaterMark` option
 passed into the streams constructor. For normal streams, the `highWaterMark`
@@ -441,9 +441,17 @@ See also: [`writable.cork()`][].
 <!-- YAML
 added: v9.3.0
 -->
-
 Return the value of `highWaterMark` passed when constructing this
 `Writable`.
+
+##### writable.writableLength
+<!-- YAML
+added: REPLACEME
+-->
+
+This property contains the number of bytes (or objects) in the queue
+ready to be written. The value provides introspection data regarding
+the status of the `highWaterMark`.
 
 ##### writable.write(chunk[, encoding][, callback])
 <!-- YAML
@@ -602,22 +610,22 @@ Readable stream implementation.
 Specifically, at any given point in time, every Readable is in one of three
 possible states:
 
-* `readable._readableState.flowing = null`
-* `readable._readableState.flowing = false`
-* `readable._readableState.flowing = true`
+* `readable.readableFlowing = null`
+* `readable.readableFlowing = false`
+* `readable.readableFlowing = true`
 
-When `readable._readableState.flowing` is `null`, no mechanism for consuming the
+When `readable.readableFlowing` is `null`, no mechanism for consuming the
 streams data is provided so the stream will not generate its data. While in this
 state, attaching a listener for the `'data'` event, calling the `readable.pipe()`
 method, or calling the `readable.resume()` method will switch
-`readable._readableState.flowing` to `true`, causing the Readable to begin
+`readable.readableFlowing` to `true`, causing the Readable to begin
 actively emitting events as data is generated.
 
 Calling `readable.pause()`, `readable.unpipe()`, or receiving "back pressure"
-will cause the `readable._readableState.flowing` to be set as `false`,
+will cause the `readable.readableFlowing` to be set as `false`,
 temporarily halting the flowing of events but *not* halting the generation of
 data. While in this state, attaching a listener for the `'data'` event
-would not cause `readable._readableState.flowing` to switch to `true`.
+would not cause `readable.readableFlowing` to switch to `true`.
 
 ```js
 const { PassThrough, Writable } = require('stream');
@@ -626,14 +634,14 @@ const writable = new Writable();
 
 pass.pipe(writable);
 pass.unpipe(writable);
-// flowing is now false
+// readableFlowing is now false
 
 pass.on('data', (chunk) => { console.log(chunk.toString()); });
 pass.write('ok'); // will not emit 'data'
 pass.resume(); // must be called to make 'data' being emitted
 ```
 
-While `readable._readableState.flowing` is `false`, data may be accumulating
+While `readable.readableFlowing` is `false`, data may be accumulating
 within the streams internal buffer.
 
 #### Choose One
@@ -944,6 +952,15 @@ event will also be emitted.
 
 *Note*: Calling [`stream.read([size])`][stream-read] after the [`'end'`][]
 event has been emitted will return `null`. No runtime error will be raised.
+
+##### readable.readableLength
+<!-- YAML
+added: REPLACEME
+-->
+
+This property contains the number of bytes (or objects) in the queue
+ready to be read. The value provides introspection data regarding
+the status of the `highWaterMark`.
 
 ##### readable.resume()
 <!-- YAML
@@ -1409,12 +1426,11 @@ successfully or failed with an error. The first argument passed to the
 `callback` must be the `Error` object if the call failed or `null` if the
 write succeeded.
 
-It is important to note that all calls to `writable.write()` that occur between
-the time `writable._write()` is called and the `callback` is called will cause
-the written data to be buffered. Once the `callback` is invoked, the stream will
-emit a [`'drain'`][] event. If a stream implementation is capable of processing
-multiple chunks of data at once, the `writable._writev()` method should be
-implemented.
+All calls to `writable.write()` that occur between the time `writable._write()`
+is called and the `callback` is called will cause the written data to be
+buffered. Once the `callback` is invoked, the stream will emit a [`'drain'`][]
+event. If a stream implementation is capable of processing multiple chunks of
+data at once, the `writable._writev()` method should be implemented.
 
 If the `decodeStrings` property is set in the constructor options, then
 `chunk` may be a string rather than a Buffer, and `encoding` will

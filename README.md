@@ -173,23 +173,22 @@ officially supported platforms.
 
 ## Security
 
-All security bugs in Node.js are taken seriously and should be reported by
-emailing security@nodejs.org. This will be delivered to a subset of the project
-team who handle security issues. Please don't disclose security bugs
-publicly until they have been handled by the security team.
+Security flaws in Node.js should be reported by emailing security@nodejs.org.
+Please do not disclose security bugs publicly until they have been handled by
+the security team.
 
-Your email will be acknowledged within 24 hours, and you’ll receive a more
+Your email will be acknowledged within 24 hours, and you will receive a more
 detailed response to your email within 48 hours indicating the next steps in
 handling your report.
 
 There are no hard and fast rules to determine if a bug is worth reporting as
-a security issue. The general rule is any issue worth reporting
-must allow an attacker to compromise the confidentiality, integrity
-or availability of the Node.js application or its system for which the attacker
-does not already have the capability.
+a security issue. The general rule is an issue worth reporting should allow an
+attacker to compromise the confidentiality, integrity, or availability of the
+Node.js application or its system for which the attacker does not already have
+the capability.
 
 To illustrate the point, here are some examples of past issues and what the
-Security Reponse Team thinks of them. When in doubt, however, please do send
+Security Response Team thinks of them. When in doubt, however, please do send
 us a report nonetheless.
 
 
@@ -480,6 +479,8 @@ For more information about the governance of the Node.js project, see
 **Roman Reiss** &lt;me@silverwind.io&gt;
 * [srl295](https://github.com/srl295) -
 **Steven R Loomis** &lt;srloomis@us.ibm.com&gt;
+* [starkwang](https://github.com/starkwang) -
+**Weijia Wang** &lt;starkwang@126.com&gt;
 * [stefanmb](https://github.com/stefanmb) -
 **Stefan Budeanu** &lt;stefan@budeanu.com&gt;
 * [targos](https://github.com/targos) -
@@ -491,7 +492,7 @@ For more information about the governance of the Node.js project, see
 * [thlorenz](https://github.com/thlorenz) -
 **Thorsten Lorenz** &lt;thlorenz@gmx.de&gt;
 * [TimothyGu](https://github.com/TimothyGu) -
-**Timothy Gu** &lt;timothygu99@gmail.com&gt; (he/him)
+**Tiancheng "Timothy" Gu** &lt;timothygu99@gmail.com&gt; (he/him)
 * [tniessen](https://github.com/tniessen) -
 **Tobias Nießen** &lt;tniessen@tnie.de&gt;
 * [trevnorris](https://github.com/trevnorris) -
