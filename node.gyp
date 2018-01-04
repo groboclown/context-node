@@ -59,6 +59,7 @@
       'lib/querystring.js',
       'lib/readline.js',
       'lib/repl.js',
+      'lib/security_context.js',
       'lib/stream.js',
       'lib/_stream_readable.js',
       'lib/_stream_writable.js',
