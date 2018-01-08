@@ -782,6 +782,13 @@ Encoding provided to `util.TextDecoder()` API was not one of the
 A `Promise` that was callbackified via `util.callbackify()` was rejected with a
 falsy value.
 
+<a id="ERR_FILE_ACCESS_FORBIDDEN"></a>
+### ERR_FILE_ACCESS_FORBIDDEN
+
+The security restrictions on accessing one or more files through the
+[`security_context.FileAccessController`][] prevented the [`fs`][] call from
+happening.
+
 <a id="ERR_FS_INVALID_SYMLINK_TYPE"></a>
 ### ERR_FS_INVALID_SYMLINK_TYPE
 
