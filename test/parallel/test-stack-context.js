@@ -54,8 +54,11 @@ try {
 
   // Ensure that the context controller correctly fails.
   assert.throws(
-    stackContext.wrapFunction({ required: { allow: false } }, () => {})(),
-    (err) => err instanceof Error
+    stackContext.wrapFunction(
+      { required: { allow: false } },
+      () => {}),
+    Error,
+    'did not pass in allow (false)'
   );
 } finally {
   stackContext.getCurrentContext().popControllers(controllerId1);
