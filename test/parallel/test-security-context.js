@@ -7,10 +7,9 @@ const stackContext = require('context');
 const security = require('security_context');
 
 function fsSecurityTest(name, setup, fn) {
+  console.log('*** DEBUG starting ' + name);
   const controllerId = stackContext.getCurrentContext().pushControllers(
-    security.addFileAccessController({
-      [security.FILE_ACCESS]: setup
-    })
+    security.addFileAccessController(setup)
   );
   try {
     fn();
@@ -20,10 +19,10 @@ function fsSecurityTest(name, setup, fn) {
     throw e;
   } finally {
     stackContext.getCurrentContext().popControllers(controllerId);
+    console.log('*** DEBUG stopped ' + name);
   }
 }
 
-/*
 fsSecurityTest(
   'file access control wrapper check - single object', {},
   () => {
@@ -55,11 +54,10 @@ fsSecurityTest(
       }
     );
   });
-*/
 
 fsSecurityTest(
   'fs.open for read: allowed',
-  { readable: common.tmpDir },
+  { readable: ('' + common.tmpDir) },
   () => {
     const a = fs.open(common.tmpDir + '/a.tmp', 'r');
     fs.close(a);
@@ -67,7 +65,7 @@ fsSecurityTest(
 
 fsSecurityTest(
   'fs.open for write: allowed',
-  { writable: common.tmpDir },
+  { writable: ('' + common.tmpDir) },
   () => {
     const a = fs.open(common.tmpDir + '/a.tmp', 'w');
     fs.close(a);
