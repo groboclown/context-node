@@ -446,7 +446,7 @@ Return the value of `highWaterMark` passed when constructing this
 
 ##### writable.writableLength
 <!-- YAML
-added: REPLACEME
+added: v9.4.0
 -->
 
 This property contains the number of bytes (or objects) in the queue
@@ -747,6 +747,12 @@ The listener callback will be passed a single `Error` object.
 ##### Event: 'readable'
 <!-- YAML
 added: v0.9.4
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/17979
+    description: >
+      'readable' is always emitted in the next tick after
+      .push() is called
 -->
 
 The `'readable'` event is emitted when there is data available to be read from
@@ -955,7 +961,7 @@ event has been emitted will return `null`. No runtime error will be raised.
 
 ##### readable.readableLength
 <!-- YAML
-added: REPLACEME
+added: v9.4.0
 -->
 
 This property contains the number of bytes (or objects) in the queue
@@ -1158,6 +1164,31 @@ Destroy the stream, and emit `'error'`. After this call, the
 readable stream will release any internal resources.
 Implementors should not override this method, but instead implement
 [`readable._destroy`][readable-_destroy].
+
+##### readable[@@asyncIterator]
+<!-- YAML
+added: REPLACEME
+-->
+
+> Stability: 1 - Experimental
+
+Returns an [AsyncIterator][async-iterator] to fully consume the stream.
+
+```js
+async function print(readable) {
+  readable.setEncoding('utf8');
+  let data = '';
+  for await (const k of readable) {
+    data += k;
+  }
+  console.log(data);
+}
+
+print(fs.createReadStream('file')).catch(console.log);
+```
+
+If the loop terminates with a `break` or a `throw`, the stream will be destroyed.
+In other terms, iterating over a stream will consume the stream fully.
 
 ### Duplex and Transform Streams
 
@@ -1647,6 +1678,13 @@ const myReadable = new Readable({
 ```
 
 #### readable.\_read(size)
+<!-- YAML
+added: v0.9.4
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/17979
+    description: call _read() only once per microtick
+-->
 
 * `size` {number} Number of bytes to read asynchronously
 
@@ -1666,6 +1704,8 @@ additional data onto the queue.
 
 *Note*: Once the `readable._read()` method has been called, it will not be
 called again until the [`readable.push()`][stream-push] method is called.
+`readable._read()` is guaranteed to be called only once within a
+synchronous execution, i.e. a microtick.
 
 The `size` argument is advisory. For implementations where a "read" is a
 single operation that returns data can use the `size` argument to determine how
@@ -2313,3 +2353,4 @@ contain multi-byte characters.
 [readable-destroy]: #stream_readable_destroy_error
 [writable-_destroy]: #stream_writable_destroy_err_callback
 [writable-destroy]: #stream_writable_destroy_error
+[async-iterator]: https://github.com/tc39/proposal-async-iteration
