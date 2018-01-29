@@ -6,6 +6,7 @@ const fs = require('fs');
 const net = require('net');
 const providers = Object.assign({}, process.binding('async_wrap').Providers);
 const fixtures = require('../common/fixtures');
+const { getSystemErrorName } = require('util');
 
 // Make sure that all Providers are tested.
 {
@@ -88,13 +89,6 @@ function testInitialized(req, ctor_name) {
 
 
 if (common.hasCrypto) { // eslint-disable-line crypto-check
-  const tls = require('tls');
-  // SecurePair
-  testInitialized(tls.createSecurePair().ssl, 'Connection');
-}
-
-
-if (common.hasCrypto) { // eslint-disable-line crypto-check
   const crypto = require('crypto');
 
   // The handle for PBKDF2 and RandomBytes isn't returned by the function call,
@@ -119,9 +113,8 @@ if (common.hasCrypto) { // eslint-disable-line crypto-check
   const req = new FSReqWrap();
   req.oncomplete = () => { };
 
-  testUninitialized(req, 'FSReqWrap');
-  binding.access(path.toNamespacedPath('../'), fs.F_OK, req);
   testInitialized(req, 'FSReqWrap');
+  binding.access(path.toNamespacedPath('../'), fs.F_OK, req);
 
   const StatWatcher = binding.StatWatcher;
   testInitialized(new StatWatcher(), 'StatWatcher');
@@ -146,6 +139,8 @@ if (common.hasCrypto) { // eslint-disable-line crypto-check
 }
 
 {
+  common.refreshTmpDir();
+
   const server = net.createServer(common.mustCall((socket) => {
     server.close();
   })).listen(common.PIPE, common.mustCall(() => {
@@ -211,7 +206,7 @@ if (common.hasCrypto) { // eslint-disable-line crypto-check
       // Use a long string to make sure the write happens asynchronously.
       const err = handle.writeLatin1String(wreq, 'hi'.repeat(100000));
       if (err)
-        throw new Error(`write failed: ${process.binding('uv').errname(err)}`);
+        throw new Error(`write failed: ${getSystemErrorName(err)}`);
       testInitialized(wreq, 'WriteWrap');
     });
     req.address = common.localhostIPv4;

@@ -1200,8 +1200,8 @@ is not supported.
 ### ERR_INVALID_SYNC_FORK_INPUT
 
 A `Buffer`, `Uint8Array` or `string` was provided as stdio input to a
-synchronous fork. See the documentation for the
-[`child_process`](child_process.html) module for more information.
+synchronous fork. See the documentation for the [`child_process`][] module
+for more information.
 
 <a id="ERR_INVALID_THIS"></a>
 ### ERR_INVALID_THIS
@@ -1257,22 +1257,22 @@ An attempt was made to use an IPC communication channel that was already closed.
 ### ERR_IPC_DISCONNECTED
 
 An attempt was made to disconnect an IPC communication channel that was already
-disconnected. See the documentation for the
-[`child_process`](child_process.html) module for more information.
+disconnected. See the documentation for the [`child_process`][] module
+for more information.
 
 <a id="ERR_IPC_ONE_PIPE"></a>
 ### ERR_IPC_ONE_PIPE
 
 An attempt was made to create a child Node.js process using more than one IPC
-communication channel. See the documentation for the
-[`child_process`](child_process.html) module for more information.
+communication channel. See the documentation for the [`child_process`][] module
+for more information.
 
 <a id="ERR_IPC_SYNC_FORK"></a>
 ### ERR_IPC_SYNC_FORK
 
 An attempt was made to open an IPC communication channel with a synchronously
-forked Node.js process. See the documentation for the
-[`child_process`](child_process.html) module for more information.
+forked Node.js process. See the documentation for the [`child_process`][] module
+for more information.
 
 <a id="ERR_METHOD_NOT_IMPLEMENTED"></a>
 ### ERR_METHOD_NOT_IMPLEMENTED
@@ -1334,6 +1334,18 @@ While using `N-API`, `Constructor.prototype` was not an object.
 
 While calling `napi_create_dataview()`, a given `offset` was outside the bounds
 of the dataview or `offset + length` was larger than a length of given `buffer`.
+
+<a id="ERR_NAPI_INVALID_TYPEDARRAY_ALIGNMENT"></a>
+### ERR_NAPI_INVALID_TYPEDARRAY_ALIGNMENT
+
+While calling `napi_create_typedarray()`, the provided `offset` was not a
+multiple of the element size.
+
+<a id="ERR_NAPI_INVALID_TYPEDARRAY_LENGTH"></a>
+### ERR_NAPI_INVALID_TYPEDARRAY_LENGTH
+
+While calling `napi_create_typedarray()`, `(length * size_of_element) +
+byte_offset` was larger than the length of given `buffer`.
 
 <a id="ERR_NO_CRYPTO"></a>
 ### ERR_NO_CRYPTO
@@ -1537,6 +1549,12 @@ a hostname in the first parameter.
 An excessive amount of TLS renegotiations is detected, which is a potential
 vector for denial-of-service attacks.
 
+<a id="ERR_TLS_SNI_FROM_SERVER"></a>
+### ERR_TLS_SNI_FROM_SERVER
+
+An attempt was made to issue Server Name Indication from a TLS server-side
+socket, which is only valid from a client.
+
 <a id="ERR_TLS_RENEGOTIATION_DISABLED"></a>
 ### ERR_TLS_RENEGOTIATION_DISABLED
 
@@ -1639,6 +1657,7 @@ An attempt was made to use a `zlib` object after it has already been closed.
 Creation of a [`zlib`][] object failed due to incorrect configuration.
 
 [`--force-fips`]: cli.html#cli_force_fips
+[`child_process`]: child_process.html
 [`cipher.getAuthTag()`]: crypto.html#crypto_cipher_getauthtag
 [`crypto.timingSafeEqual()`]: crypto.html#crypto_crypto_timingsafeequal_a_b
 [`dgram.createSocket()`]: dgram.html#dgram_dgram_createsocket_options_callback
@@ -1649,6 +1668,7 @@ Creation of a [`zlib`][] object failed due to incorrect configuration.
 [`hash.digest()`]: crypto.html#crypto_hash_digest_encoding
 [`hash.update()`]: crypto.html#crypto_hash_update_data_inputencoding
 [`readable._read()`]: stream.html#stream_readable_read_size_1
+[`server.close()`]: net.html#net_server_close_callback
 [`sign.sign()`]: crypto.html#crypto_sign_sign_privatekey_outputformat
 [`stream.pipe()`]: stream.html#stream_readable_pipe_destination_options
 [`stream.push()`]: stream.html#stream_readable_push_chunk_encoding

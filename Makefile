@@ -30,9 +30,9 @@ ifdef ENABLE_V8_TAP
   TAP_V8_BENCHMARKS := --junitout $(PWD)/v8-benchmarks-tap.xml
 endif
 
+V8_BUILD_OPTIONS += GYPFLAGS="-Dclang=0"
 V8_TEST_OPTIONS = $(V8_EXTRA_TEST_OPTIONS)
 ifdef DISABLE_V8_I18N
-  V8_TEST_OPTIONS += --noi18n
   V8_BUILD_OPTIONS += i18nsupport=off
 endif
 
@@ -145,12 +145,14 @@ check: test
 coverage-clean:
 	if [ -d lib_ ]; then $(RM) -r lib; mv lib_ lib; fi
 	$(RM) -r node_modules
-	$(RM) -r gcovr testing
+	$(RM) -r gcovr build
 	$(RM) -r out/$(BUILDTYPE)/.coverage
 	$(RM) -r .cov_tmp
-	$(RM) out/$(BUILDTYPE)/obj.target/node/{src,gen}/*.gcda
+	$(RM) out/$(BUILDTYPE)/obj.target/node/gen/*.gcda
+	$(RM) out/$(BUILDTYPE)/obj.target/node/src/*.gcda
 	$(RM) out/$(BUILDTYPE)/obj.target/node/src/tracing/*.gcda
-	$(RM) out/$(BUILDTYPE)/obj.target/node/{src,gen}/*.gcno
+	$(RM) out/$(BUILDTYPE)/obj.target/node/gen/*.gcno
+	$(RM) out/$(BUILDTYPE)/obj.target/node/src/*.gcno
 	$(RM) out/$(BUILDTYPE)/obj.target/node/src/tracing/*.gcno
 	$(RM) out/$(BUILDTYPE)/obj.target/cctest/src/*.gcno
 	$(RM) out/$(BUILDTYPE)/obj.target/cctest/test/cctest/*.gcno
@@ -172,7 +174,7 @@ coverage-build: all
 		$(NODE) ./deps/npm install nyc --no-save --no-package-lock; fi
 	if [ ! -d gcovr ]; then git clone --depth=1 \
 		--single-branch git://github.com/gcovr/gcovr.git; fi
-	if [ ! -d testing ]; then git clone --depth=1 \
+	if [ ! -d build ]; then git clone --depth=1 \
 		--single-branch https://github.com/nodejs/build.git; fi
 	if [ ! -f gcovr/scripts/gcovr.orig ]; then \
 		(cd gcovr && patch -N -p1 < \
@@ -186,7 +188,8 @@ coverage-build: all
 coverage-test: coverage-build
 	$(RM) -r out/$(BUILDTYPE)/.coverage
 	$(RM) -r .cov_tmp
-	$(RM) out/$(BUILDTYPE)/obj.target/node/{src,gen}/*.gcda
+	$(RM) out/$(BUILDTYPE)/obj.target/node/gen/*.gcda
+	$(RM) out/$(BUILDTYPE)/obj.target/node/src/*.gcda
 	$(RM) out/$(BUILDTYPE)/obj.target/node/src/tracing/*.gcda
 	-$(MAKE) $(COVTESTS)
 	mv lib lib__
@@ -908,15 +911,31 @@ $(TARBALL): release-only $(NODE_EXE) doc
 	mkdir -p $(TARNAME)/doc/api
 	cp doc/node.1 $(TARNAME)/doc/node.1
 	cp -r out/doc/api/* $(TARNAME)/doc/api/
-	$(RM) -r $(TARNAME)/deps/v8/{test,samples,tools/profviz,tools/run-tests.py}
-	$(RM) -r $(TARNAME)/doc/images # too big
-	$(RM) -r $(TARNAME)/deps/uv/{docs,samples,test}
-	$(RM) -r $(TARNAME)/deps/openssl/openssl/{doc,demos,test}
+	$(RM) -r $(TARNAME)/.editorconfig
+	$(RM) -r $(TARNAME)/.git*
+	$(RM) -r $(TARNAME)/.mailmap
+	$(RM) -r $(TARNAME)/deps/openssl/openssl/demos
+	$(RM) -r $(TARNAME)/deps/openssl/openssl/doc
+	$(RM) -r $(TARNAME)/deps/openssl/openssl/test
+	$(RM) -r $(TARNAME)/deps/uv/docs
+	$(RM) -r $(TARNAME)/deps/uv/samples
+	$(RM) -r $(TARNAME)/deps/uv/test
+	$(RM) -r $(TARNAME)/deps/v8/samples
+	$(RM) -r $(TARNAME)/deps/v8/test
+	$(RM) -r $(TARNAME)/deps/v8/tools/profviz
+	$(RM) -r $(TARNAME)/deps/v8/tools/run-tests.py
 	$(RM) -r $(TARNAME)/deps/zlib/contrib # too big, unused
-	$(RM) -r $(TARNAME)/.{editorconfig,git*,mailmap}
-	$(RM) -r $(TARNAME)/tools/{eslint-rules,node_modules,osx-pkg.pmdoc,pkgsrc,remark-cli,remark-preset-lint-node}
-	$(RM) -r $(TARNAME)/tools/{osx-*,license-builder.sh,cpplint.py}
+	$(RM) -r $(TARNAME)/doc/images # too big
 	$(RM) -r $(TARNAME)/test*.tap
+	$(RM) -r $(TARNAME)/tools/cpplint.py
+	$(RM) -r $(TARNAME)/tools/eslint-rules
+	$(RM) -r $(TARNAME)/tools/license-builder.sh
+	$(RM) -r $(TARNAME)/tools/node_modules
+	$(RM) -r $(TARNAME)/tools/osx-*
+	$(RM) -r $(TARNAME)/tools/osx-pkg.pmdoc
+	$(RM) -r $(TARNAME)/tools/pkgsrc
+	$(RM) -r $(TARNAME)/tools/remark-cli
+	$(RM) -r $(TARNAME)/tools/remark-preset-lint-node
 	find $(TARNAME)/ -name ".eslint*" -maxdepth 2 | xargs $(RM)
 	find $(TARNAME)/ -type l | xargs $(RM) # annoying on windows
 	tar -cf $(TARNAME).tar $(TARNAME)
@@ -1020,57 +1039,13 @@ ifeq ($(XZ), 0)
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.xz.done"
 endif
 
-.PHONY: bench-net
-bench-net: all
-	@$(NODE) benchmark/run.js net
-
-bench-crypto: all
-	@$(NODE) benchmark/run.js crypto
-
-.PHONY: bench-tls
-bench-tls: all
-	@$(NODE) benchmark/run.js tls
-
-.PHONY: bench-http
-bench-http: all
-	@$(NODE) benchmark/run.js http
-
-.PHONY: bench-fs
-bench-fs: all
-	@$(NODE) benchmark/run.js fs
-
-.PHONY: bench-misc
-bench-misc: benchmark/misc/function_call/build/Release/binding.node
-	@$(NODE) benchmark/run.js misc
-
-.PHONY: bench-array
-bench-array: all
-	@$(NODE) benchmark/run.js arrays
-
-.PHONY: bench-buffer
-bench-buffer: all
-	@$(NODE) benchmark/run.js buffers
-
-bench-url: all
-	@$(NODE) benchmark/run.js url
-
-bench-events: all
-	@$(NODE) benchmark/run.js events
-
-bench-util: all
-	@$(NODE) benchmark/run.js util
-
-bench-dgram: all
-	@$(NODE) benchmark/run.js dgram
-
 .PHONY: bench-all
-bench-all: bench bench-misc bench-array bench-buffer bench-url bench-events bench-dgram bench-util
+bench-all:
+	@echo "Please use benchmark/run.js or benchmark/compare.js to run the benchmarks."
 
 .PHONY: bench
-bench: bench-net bench-http bench-fs bench-tls
-
-.PHONY: bench-ci
-bench-ci: bench
+bench:
+	@echo "Please use benchmark/run.js or benchmark/compare.js to run the benchmarks."
 
 .PHONY: lint-md-clean
 lint-md-clean:
@@ -1082,27 +1057,32 @@ lint-md-clean:
 lint-md-build:
 	@if [ ! -d tools/remark-cli/node_modules ]; then \
 		echo "Markdown linter: installing remark-cli into tools/"; \
-		cd tools/remark-cli && ../../$(NODE) ../../$(NPM) install; fi
+		cd tools/remark-cli && $(call available-node,$(run-npm-install)) fi
 	@if [ ! -d tools/remark-preset-lint-node/node_modules ]; then \
 		echo "Markdown linter: installing remark-preset-lint-node into tools/"; \
-		cd tools/remark-preset-lint-node && ../../$(NODE) ../../$(NPM) install; fi
+		cd tools/remark-preset-lint-node && $(call available-node,$(run-npm-install)) fi
+
 
 .PHONY: lint-md
 ifneq ("","$(wildcard tools/remark-cli/node_modules/)")
-LINT_MD_TARGETS = src lib benchmark tools/doc tools/icu
-LINT_MD_ROOT_DOCS := $(wildcard *.md)
-LINT_MD_FILES := $(shell find $(LINT_MD_TARGETS) -type f \
-  -not -path '*node_modules*' -name '*.md') $(LINT_MD_ROOT_DOCS)
-LINT_DOC_MD_FILES = $(shell ls doc/**/*.md)
 
-tools/.docmdlintstamp: $(LINT_DOC_MD_FILES)
+LINT_MD_DOC_FILES = $(shell ls doc/**/*.md)
+run-lint-doc-md = tools/remark-cli/cli.js -q -f $(LINT_MD_DOC_FILES)
+# Lint all changed markdown files under doc/
+tools/.docmdlintstamp: $(LINT_MD_DOC_FILES)
 	@echo "Running Markdown linter on docs..."
-	@$(NODE) tools/remark-cli/cli.js -q -f $(LINT_DOC_MD_FILES)
+	@$(call available-node,$(run-lint-doc-md))
 	@touch $@
 
-tools/.miscmdlintstamp: $(LINT_MD_FILES)
+LINT_MD_TARGETS = src lib benchmark tools/doc tools/icu
+LINT_MD_ROOT_DOCS := $(wildcard *.md)
+LINT_MD_MISC_FILES := $(shell find $(LINT_MD_TARGETS) -type f \
+  -not -path '*node_modules*' -name '*.md') $(LINT_MD_ROOT_DOCS)
+run-lint-misc-md = tools/remark-cli/cli.js -q -f $(LINT_MD_MISC_FILES)
+# Lint other changed markdown files maintained by us
+tools/.miscmdlintstamp: $(LINT_MD_MISC_FILES)
 	@echo "Running Markdown linter on misc docs..."
-	@$(NODE) tools/remark-cli/cli.js -q -f $(LINT_MD_FILES)
+	@$(call available-node,$(run-lint-misc-md))
 	@touch $@
 
 tools/.mdlintstamp: tools/.miscmdlintstamp tools/.docmdlintstamp
@@ -1116,43 +1096,33 @@ lint-md:
 endif
 
 LINT_JS_TARGETS = benchmark doc lib test tools
-LINT_JS_CMD = tools/node_modules/eslint/bin/eslint.js --cache \
-	--rulesdir=tools/eslint-rules --ext=.js,.mjs,.md \
-	$(LINT_JS_TARGETS)
+
+run-lint-js = tools/node_modules/eslint/bin/eslint.js --cache \
+	--rulesdir=tools/eslint-rules --ext=.js,.mjs,.md $(LINT_JS_TARGETS)
+run-lint-js-fix = $(run-lint-js) --fix
 
 .PHONY: lint-js-fix
 lint-js-fix:
-	@if [ -x $(NODE) ]; then \
-		$(NODE) $(LINT_JS_CMD) --fix; \
-	else \
-		node $(LINT_JS_CMD) --fix; \
-	fi
+	@$(call available-node,$(run-lint-js-fix))
 
 .PHONY: lint-js
 # Note that on the CI `lint-js-ci` is run instead.
 # Lints the JavaScript code with eslint.
 lint-js:
 	@echo "Running JS linter..."
-	@if [ -x $(NODE) ]; then \
-		$(NODE) $(LINT_JS_CMD); \
-	else \
-		node $(LINT_JS_CMD); \
-	fi
+	@$(call available-node,$(run-lint-js))
 
 jslint: lint-js
 	@echo "Please use lint-js instead of jslint"
+
+run-lint-js-ci = tools/lint-js.js $(PARALLEL_ARGS) -f tap -o test-eslint.tap \
+		$(LINT_JS_TARGETS)
 
 .PHONY: lint-js-ci
 # On the CI the output is emitted in the TAP format.
 lint-js-ci:
 	@echo "Running JS linter..."
-	@if [ -x $(NODE) ]; then \
-		$(NODE) tools/lint-js.js $(PARALLEL_ARGS) -f tap -o test-eslint.tap \
-		$(LINT_JS_TARGETS); \
-	else \
-		node tools/lint-js.js $(PARALLEL_ARGS) -f tap -o test-eslint.tap \
-		$(LINT_JS_TARGETS); \
-	fi
+	@$(call available-node,$(run-lint-js-ci))
 
 jslint-ci: lint-js-ci
 	@echo "Please use lint-js-ci instead of jslint-ci"

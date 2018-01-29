@@ -303,15 +303,14 @@ MaybeLocal<Object> New(Environment* env, size_t length) {
         data,
         length,
         ArrayBufferCreationMode::kInternalized);
-  Local<Uint8Array> ui = Uint8Array::New(ab, 0, length);
-  Maybe<bool> mb =
-      ui->SetPrototype(env->context(), env->buffer_prototype_object());
-  if (mb.FromMaybe(false))
-    return scope.Escape(ui);
+  MaybeLocal<Uint8Array> ui = Buffer::New(env, ab, 0, length);
 
-  // Object failed to be created. Clean up resources.
-  free(data);
-  return Local<Object>();
+  if (ui.IsEmpty()) {
+    // Object failed to be created. Clean up resources.
+    free(data);
+  }
+
+  return scope.Escape(ui.FromMaybe(Local<Uint8Array>()));
 }
 
 
@@ -349,15 +348,14 @@ MaybeLocal<Object> Copy(Environment* env, const char* data, size_t length) {
         new_data,
         length,
         ArrayBufferCreationMode::kInternalized);
-  Local<Uint8Array> ui = Uint8Array::New(ab, 0, length);
-  Maybe<bool> mb =
-      ui->SetPrototype(env->context(), env->buffer_prototype_object());
-  if (mb.FromMaybe(false))
-    return scope.Escape(ui);
+  MaybeLocal<Uint8Array> ui = Buffer::New(env, ab, 0, length);
 
-  // Object failed to be created. Clean up resources.
-  free(new_data);
-  return Local<Object>();
+  if (ui.IsEmpty()) {
+    // Object failed to be created. Clean up resources.
+    free(new_data);
+  }
+
+  return scope.Escape(ui.FromMaybe(Local<Uint8Array>()));
 }
 
 
@@ -392,15 +390,14 @@ MaybeLocal<Object> New(Environment* env,
   // correct.
   if (data == nullptr)
     ab->Neuter();
-  Local<Uint8Array> ui = Uint8Array::New(ab, 0, length);
-  Maybe<bool> mb =
-      ui->SetPrototype(env->context(), env->buffer_prototype_object());
+  MaybeLocal<Uint8Array> ui = Buffer::New(env, ab, 0, length);
 
-  if (!mb.FromMaybe(false))
+  if (ui.IsEmpty()) {
     return Local<Object>();
+  }
 
   CallbackInfo::New(env->isolate(), ab, callback, data, hint);
-  return scope.Escape(ui);
+  return scope.Escape(ui.ToLocalChecked());
 }
 
 
@@ -415,8 +412,6 @@ MaybeLocal<Object> New(Isolate* isolate, char* data, size_t length) {
 
 
 MaybeLocal<Object> New(Environment* env, char* data, size_t length) {
-  EscapableHandleScope scope(env->isolate());
-
   if (length > 0) {
     CHECK_NE(data, nullptr);
     CHECK(length <= kMaxLength);
@@ -427,12 +422,7 @@ MaybeLocal<Object> New(Environment* env, char* data, size_t length) {
                        data,
                        length,
                        ArrayBufferCreationMode::kInternalized);
-  Local<Uint8Array> ui = Uint8Array::New(ab, 0, length);
-  Maybe<bool> mb =
-      ui->SetPrototype(env->context(), env->buffer_prototype_object());
-  if (mb.FromMaybe(false))
-    return scope.Escape(ui);
-  return Local<Object>();
+  return Buffer::New(env, ab, 0, length).FromMaybe(Local<Object>());
 }
 
 namespace {
@@ -642,13 +632,6 @@ void Fill(const FunctionCallbackInfo<Value>& args) {
                                     str_obj,
                                     enc,
                                     nullptr);
-    // This check is also needed in case Write() returns that no bytes could
-    // be written. If no bytes could be written, then return -1 because the
-    // string is invalid. This will trigger a throw in JavaScript. Silently
-    // failing should be avoided because it can lead to buffers with unexpected
-    // contents.
-    if (str_length == 0)
-      return args.GetReturnValue().Set(-1);
   }
 
  start_fill:
@@ -656,6 +639,13 @@ void Fill(const FunctionCallbackInfo<Value>& args) {
   if (str_length >= fill_length)
     return;
 
+  // If str_length is zero, then either an empty buffer was provided, or Write()
+  // indicated that no bytes could be written. If no bytes could be written,
+  // then return -1 because the fill value is invalid. This will trigger a throw
+  // in JavaScript. Silently failing should be avoided because it can lead to
+  // buffers with unexpected contents.
+  if (str_length == 0)
+    return args.GetReturnValue().Set(-1);
 
   size_t in_there = str_length;
   char* ptr = ts_obj_data + start + str_length;

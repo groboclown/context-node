@@ -71,7 +71,7 @@ N-API exposes the following fundamental datatypes as abstractions that are
 consumed by the various APIs. These APIs should be treated as opaque,
 introspectable only with other N-API calls.
 
-### *napi_status*
+### napi_status
 Integral status code indicating the success or failure of a N-API call.
 Currently, the following status codes are supported.
 ```C
@@ -94,7 +94,7 @@ typedef enum {
 If additional information is required upon an API returning a failed status,
 it can be obtained by calling `napi_get_last_error_info`.
 
-### *napi_extended_error_info*
+### napi_extended_error_info
 ```C
 typedef struct {
   const char* error_message;
@@ -114,7 +114,7 @@ typedef struct {
 
 See the [Error Handling][] section for additional information.
 
-### *napi_env*
+### napi_env
 `napi_env` is used to represent a context that the underlying N-API
 implementation can use to persist VM-specific state. This structure is passed
 to native functions when they're invoked, and it must be passed back when
@@ -123,11 +123,11 @@ the initial native function was called must be passed to any subsequent
 nested N-API calls. Caching the `napi_env` for the purpose of general reuse is
 not allowed.
 
-### *napi_value*
+### napi_value
 This is an opaque pointer that is used to represent a JavaScript value.
 
 ### N-API Memory Management types
-#### *napi_handle_scope*
+#### napi_handle_scope
 This is an abstraction used to control and modify the lifetime of objects
 created within a particular scope. In general, N-API values are created within
 the context of a handle scope. When a native method is called from
@@ -145,11 +145,11 @@ referenced from the current stack frame.
 
 For more details, review the [Object Lifetime Management][].
 
-#### *napi_escapable_handle_scope*
+#### napi_escapable_handle_scope
 Escapable handle scopes are a special type of handle scope to return values
 created within a particular handle scope to a parent scope.
 
-#### *napi_ref*
+#### napi_ref
 This is the abstraction to use to reference a `napi_value`. This allows for
 users to manage the lifetimes of JavaScript values, including defining their
 minimum lifetimes explicitly.
@@ -157,12 +157,12 @@ minimum lifetimes explicitly.
 For more details, review the [Object Lifetime Management][].
 
 ### N-API Callback types
-#### *napi_callback_info*
+#### napi_callback_info
 Opaque datatype that is passed to a callback function. It can be used for
 getting additional information about the context in which the callback was
 invoked.
 
-#### *napi_callback*
+#### napi_callback
 Function pointer type for user-provided native functions which are to be
 exposed to JavaScript via N-API. Callback functions should satisfy the
 following signature:
@@ -170,7 +170,7 @@ following signature:
 typedef napi_value (*napi_callback)(napi_env, napi_callback_info);
 ```
 
-#### *napi_finalize*
+#### napi_finalize
 Function pointer type for add-on provided functions that allow the user to be
 notified when externally-owned data is ready to be cleaned up because the
 object with which it was associated with, has been garbage-collected. The user
@@ -976,7 +976,7 @@ However, for better performance, it's better for the caller to make sure that
 the `napi_value` in question is of the JavaScript type expected by the API.
 
 ### Enum types
-#### *napi_valuetype*
+#### napi_valuetype
 ```C
 typedef enum {
   // ES6 types (corresponds to typeof)
@@ -999,7 +999,7 @@ the ECMAScript Language Specification.
 In addition to types in that section, `napi_valuetype` can also represent
 Functions and Objects with external data.
 
-#### *napi_typedarray_type*
+#### napi_typedarray_type
 ```C
 typedef enum {
   napi_int8_array,
@@ -1016,11 +1016,10 @@ typedef enum {
 
 This represents the underlying binary scalar datatype of the TypedArray.
 Elements of this enum correspond to
-[Section 22.2](https://tc39.github.io/ecma262/#sec-typedarray-objects)
-of the [ECMAScript Language Specification][].
+[Section 22.2][] of the [ECMAScript Language Specification][].
 
 ### Object Creation Functions
-#### *napi_create_array*
+#### napi_create_array
 <!-- YAML
 added: v8.0.0
 -->
@@ -1035,10 +1034,9 @@ Returns `napi_ok` if the API succeeded.
 
 This API returns an N-API value corresponding to a JavaScript Array type.
 JavaScript arrays are described in
-[Section 22.1](https://tc39.github.io/ecma262/#sec-array-objects) of the
-ECMAScript Language Specification.
+[Section 22.1][] of the ECMAScript Language Specification.
 
-#### *napi_create_array_with_length*
+#### napi_create_array_with_length
 <!-- YAML
 added: v8.0.0
 -->
@@ -1064,10 +1062,9 @@ directly read and/or written via C, consider using
 [`napi_create_external_arraybuffer`][].
 
 JavaScript arrays are described in
-[Section 22.1](https://tc39.github.io/ecma262/#sec-array-objects) of the
-ECMAScript Language Specification.
+[Section 22.1][] of the ECMAScript Language Specification.
 
-#### *napi_create_arraybuffer*
+#### napi_create_arraybuffer
 <!-- YAML
 added: v8.0.0
 -->
@@ -1096,10 +1093,9 @@ written to directly from native code. To write to this buffer from JavaScript,
 a typed array or DataView object would need to be created.
 
 JavaScript ArrayBuffer objects are described in
-[Section 24.1](https://tc39.github.io/ecma262/#sec-arraybuffer-objects)
-of the ECMAScript Language Specification.
+[Section 24.1][] of the ECMAScript Language Specification.
 
-#### *napi_create_buffer*
+#### napi_create_buffer
 <!-- YAML
 added: v8.0.0
 -->
@@ -1120,7 +1116,7 @@ Returns `napi_ok` if the API succeeded.
 This API allocates a `node::Buffer` object. While this is still a
 fully-supported data structure, in most cases using a TypedArray will suffice.
 
-#### *napi_create_buffer_copy*
+#### napi_create_buffer_copy
 <!-- YAML
 added: v8.0.0
 -->
@@ -1145,7 +1141,7 @@ This API allocates a `node::Buffer` object and initializes it with data copied
 from the passed-in buffer. While this is still a fully-supported data
 structure, in most cases using a TypedArray will suffice.
 
-#### *napi_create_external*
+#### napi_create_external
 <!-- YAML
 added: v8.0.0
 -->
@@ -1209,10 +1205,9 @@ managed. The caller must ensure that the byte buffer remains valid until the
 finalize callback is called.
 
 JavaScript ArrayBuffers are described in
-[Section 24.1](https://tc39.github.io/ecma262/#sec-arraybuffer-objects)
-of the ECMAScript Language Specification.
+[Section 24.1][] of the ECMAScript Language Specification.
 
-#### *napi_create_external_buffer*
+#### napi_create_external_buffer
 <!-- YAML
 added: v8.0.0
 -->
@@ -1243,7 +1238,7 @@ structure, in most cases using a TypedArray will suffice.
 
 *Note*: For Node.js >=4 `Buffers` are Uint8Arrays.
 
-#### *napi_create_function*
+#### napi_create_function
 <!-- YAML
 added: v8.0.0
 -->
@@ -1276,7 +1271,7 @@ JavaScript Functions are described in
 [Section 19.2](https://tc39.github.io/ecma262/#sec-function-objects)
 of the ECMAScript Language Specification.
 
-#### *napi_create_object*
+#### napi_create_object
 <!-- YAML
 added: v8.0.0
 -->
@@ -1296,7 +1291,7 @@ The JavaScript Object type is described in
 [Section 6.1.7](https://tc39.github.io/ecma262/#sec-object-type) of the
 ECMAScript Language Specification.
 
-#### *napi_create_symbol*
+#### napi_create_symbol
 <!-- YAML
 added: v8.0.0
 -->
@@ -1319,7 +1314,7 @@ The JavaScript Symbol type is described in
 [Section 19.4](https://tc39.github.io/ecma262/#sec-symbol-objects)
 of the ECMAScript Language Specification.
 
-#### *napi_create_typedarray*
+#### napi_create_typedarray
 <!-- YAML
 added: v8.0.0
 -->
@@ -1351,11 +1346,10 @@ be <= the size in bytes of the array passed in. If not, a RangeError exception i
 raised.
 
 JavaScript TypedArray Objects are described in
-[Section 22.2](https://tc39.github.io/ecma262/#sec-typedarray-objects)
-of the ECMAScript Language Specification.
+[Section 22.2][] of the ECMAScript Language Specification.
 
 
-#### *napi_create_dataview*
+#### napi_create_dataview
 <!-- YAML
 added: v8.3.0
 -->
@@ -1389,7 +1383,7 @@ JavaScript DataView Objects are described in
 [Section 24.3][] of the ECMAScript Language Specification.
 
 ### Functions to convert from C types to N-API
-#### *napi_create_int32*
+#### napi_create_int32
 <!-- YAML
 added: v8.4.0
 -->
@@ -1407,10 +1401,9 @@ This API is used to convert from the C `int32_t` type to the JavaScript
 Number type.
 
 The JavaScript Number type is described in
-[Section 6.1.6](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type)
-of the ECMAScript Language Specification.
+[Section 6.1.6][] of the ECMAScript Language Specification.
 
-#### *napi_create_uint32*
+#### napi_create_uint32
 <!-- YAML
 added: v8.4.0
 -->
@@ -1428,10 +1421,9 @@ This API is used to convert from the C `uint32_t` type to the JavaScript
 Number type.
 
 The JavaScript Number type is described in
-[Section 6.1.6](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type)
-of the ECMAScript Language Specification.
+[Section 6.1.6][] of the ECMAScript Language Specification.
 
-#### *napi_create_int64*
+#### napi_create_int64
 <!-- YAML
 added: v8.4.0
 -->
@@ -1448,8 +1440,7 @@ Returns `napi_ok` if the API succeeded.
 This API is used to convert from the C `int64_t` type to the JavaScript
 Number type.
 
-The JavaScript Number type is described in
-[Section 6.1.6](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type)
+The JavaScript Number type is described in [Section 6.1.6][]
 of the ECMAScript Language Specification. Note the complete range of `int64_t`
 cannot be represented with full precision in JavaScript. Integer values
 outside the range of
@@ -1458,7 +1449,7 @@ outside the range of
 [`Number.MAX_SAFE_INTEGER`](https://tc39.github.io/ecma262/#sec-number.max_safe_integer)
 (2^53 - 1) will lose precision.
 
-#### *napi_create_double*
+#### napi_create_double
 <!-- YAML
 added: v8.4.0
 -->
@@ -1476,10 +1467,9 @@ This API is used to convert from the C `double` type to the JavaScript
 Number type.
 
 The JavaScript Number type is described in
-[Section 6.1.6](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type)
-of the ECMAScript Language Specification.
+[Section 6.1.6][] of the ECMAScript Language Specification.
 
-#### *napi_create_string_latin1*
+#### napi_create_string_latin1
 <!-- YAML
 added: v8.0.0
 -->
@@ -1501,10 +1491,9 @@ Returns `napi_ok` if the API succeeded.
 This API creates a JavaScript String object from a ISO-8859-1-encoded C string.
 
 The JavaScript String type is described in
-[Section 6.1.4](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-string-type)
-of the ECMAScript Language Specification.
+[Section 6.1.4][] of the ECMAScript Language Specification.
 
-#### *napi_create_string_utf16*
+#### napi_create_string_utf16
 <!-- YAML
 added: v8.0.0
 -->
@@ -1526,10 +1515,9 @@ Returns `napi_ok` if the API succeeded.
 This API creates a JavaScript String object from a UTF16-LE-encoded C string
 
 The JavaScript String type is described in
-[Section 6.1.4](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-string-type)
-of the ECMAScript Language Specification.
+[Section 6.1.4][] of the ECMAScript Language Specification.
 
-#### *napi_create_string_utf8*
+#### napi_create_string_utf8
 <!-- YAML
 added: v8.0.0
 -->
@@ -1551,11 +1539,10 @@ Returns `napi_ok` if the API succeeded.
 This API creates a JavaScript String object from a UTF8-encoded C string
 
 The JavaScript String type is described in
-[Section 6.1.4](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-string-type)
-of the ECMAScript Language Specification.
+[Section 6.1.4][] of the ECMAScript Language Specification.
 
 ### Functions to convert from N-API to C types
-#### *napi_get_array_length*
+#### napi_get_array_length
 <!-- YAML
 added: v8.0.0
 -->
@@ -1578,7 +1565,7 @@ Array length is described in
 [Section 22.1.4.1](https://tc39.github.io/ecma262/#sec-properties-of-array-instances-length)
 of the ECMAScript Language Specification.
 
-#### *napi_get_arraybuffer_info*
+#### napi_get_arraybuffer_info
 <!-- YAML
 added: v8.0.0
 -->
@@ -1606,7 +1593,7 @@ which can be used to guarantee control over the lifetime of the
 ArrayBuffer. It's also safe to use the returned data buffer within the same
 callback as long as there are no calls to other APIs that might trigger a GC.
 
-#### *napi_get_buffer_info*
+#### napi_get_buffer_info
 <!-- YAML
 added: v8.0.0
 -->
@@ -1630,7 +1617,7 @@ and it's length.
 *Warning*: Use caution while using this API since the underlying data buffer's
 lifetime is not guaranteed if it's managed by the VM.
 
-#### *napi_get_prototype*
+#### napi_get_prototype
 <!-- YAML
 added: v8.0.0
 -->
@@ -1648,7 +1635,7 @@ not the same as the function's `prototype` property).
 
 Returns `napi_ok` if the API succeeded.
 
-#### *napi_get_typedarray_info*
+#### napi_get_typedarray_info
 <!-- YAML
 added: v8.0.0
 -->
@@ -1680,7 +1667,7 @@ is managed by the VM
 
 
 
-#### *napi_get_dataview_info*
+#### napi_get_dataview_info
 <!-- YAML
 added: v8.3.0
 -->
@@ -1708,7 +1695,7 @@ Returns `napi_ok` if the API succeeded.
 This API returns various properties of a DataView.
 
 
-#### *napi_get_value_bool*
+#### napi_get_value_bool
 <!-- YAML
 added: v8.0.0
 -->
@@ -1727,7 +1714,7 @@ passed in it returns `napi_boolean_expected`.
 This API returns the C boolean primitive equivalent of the given JavaScript
 Boolean.
 
-#### *napi_get_value_double*
+#### napi_get_value_double
 <!-- YAML
 added: v8.0.0
 -->
@@ -1749,7 +1736,7 @@ This API returns the C double primitive equivalent of the given JavaScript
 Number.
 
 
-#### *napi_get_value_external*
+#### napi_get_value_external
 <!-- YAML
 added: v8.0.0
 -->
@@ -1769,7 +1756,7 @@ passed in it returns `napi_invalid_arg`.
 This API retrieves the external data pointer that was previously passed to
 `napi_create_external()`.
 
-#### *napi_get_value_int32*
+#### napi_get_value_int32
 <!-- YAML
 added: v8.0.0
 -->
@@ -1792,7 +1779,7 @@ of the given JavaScript Number. If the number exceeds the range of the
 bottom 32 bits. This can result in a large positive number becoming
 a negative number if the value is > 2^31 -1.
 
-#### *napi_get_value_int64*
+#### napi_get_value_int64
 <!-- YAML
 added: v8.0.0
 -->
@@ -1812,7 +1799,7 @@ is passed in it returns `napi_number_expected`.
 This API returns the C int64 primitive equivalent of the given
 JavaScript Number
 
-#### *napi_get_value_string_latin1*
+#### napi_get_value_string_latin1
 <!-- YAML
 added: v8.0.0
 -->
@@ -1839,7 +1826,7 @@ is passed in it returns `napi_string_expected`.
 This API returns the ISO-8859-1-encoded string corresponding the value passed
 in.
 
-#### *napi_get_value_string_utf8*
+#### napi_get_value_string_utf8
 <!-- YAML
 added: v8.0.0
 -->
@@ -1865,7 +1852,7 @@ is passed in it returns `napi_string_expected`.
 
 This API returns the UTF8-encoded string corresponding the value passed in.
 
-#### *napi_get_value_string_utf16*
+#### napi_get_value_string_utf16
 <!-- YAML
 added: v8.0.0
 -->
@@ -1891,7 +1878,7 @@ is passed in it returns `napi_string_expected`.
 
 This API returns the UTF16-encoded string corresponding the value passed in.
 
-#### *napi_get_value_uint32*
+#### napi_get_value_uint32
 <!-- YAML
 added: v8.0.0
 -->
@@ -1913,7 +1900,7 @@ This API returns the C primitive equivalent of the given `napi_value` as a
 `uint32_t`.
 
 ### Functions to get global instances
-#### *napi_get_boolean*
+#### napi_get_boolean
 <!-- YAML
 added: v8.0.0
 -->
@@ -1931,7 +1918,7 @@ Returns `napi_ok` if the API succeeded.
 This API is used to return the JavaScript singleton object that is used to
 represent the given boolean value
 
-#### *napi_get_global*
+#### napi_get_global
 <!-- YAML
 added: v8.0.0
 -->
@@ -1946,7 +1933,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API returns the global Object.
 
-#### *napi_get_null*
+#### napi_get_null
 <!-- YAML
 added: v8.0.0
 -->
@@ -1961,7 +1948,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API returns the null Object.
 
-#### *napi_get_undefined*
+#### napi_get_undefined
 <!-- YAML
 added: v8.0.0
 -->
@@ -1981,7 +1968,7 @@ This API returns the Undefined object.
 N-API exposes a set of APIs to perform some abstract operations on JavaScript
 values. Some of these operations are documented under
 [Section 7](https://tc39.github.io/ecma262/#sec-abstract-operations)
-of the [ECMAScript Language Specification](https://tc39.github.io/ecma262/).
+of the [ECMAScript Language Specification][].
 
 These APIs support doing one of the following:
 1. Coerce JavaScript values to specific JavaScript types (such as Number or
@@ -1989,7 +1976,7 @@ These APIs support doing one of the following:
 2. Check the type of a JavaScript value
 3. Check for equality between two JavaScript values
 
-### *napi_coerce_to_bool*
+### napi_coerce_to_bool
 <!-- YAML
 added: v8.0.0
 -->
@@ -2010,7 +1997,7 @@ This API implements the abstract operation ToBoolean as defined in
 of the ECMAScript Language Specification.
 This API can be re-entrant if getters are defined on the passed-in Object.
 
-### *napi_coerce_to_number*
+### napi_coerce_to_number
 <!-- YAML
 added: v8.0.0
 -->
@@ -2031,7 +2018,7 @@ This API implements the abstract operation ToNumber as defined in
 of the ECMAScript Language Specification.
 This API can be re-entrant if getters are defined on the passed-in Object.
 
-### *napi_coerce_to_object*
+### napi_coerce_to_object
 <!-- YAML
 added: v8.0.0
 -->
@@ -2052,7 +2039,7 @@ This API implements the abstract operation ToObject as defined in
 of the ECMAScript Language Specification.
 This API can be re-entrant if getters are defined on the passed-in Object.
 
-### *napi_coerce_to_string*
+### napi_coerce_to_string
 <!-- YAML
 added: v8.0.0
 -->
@@ -2073,7 +2060,7 @@ This API implements the abstract operation ToString as defined in
 of the ECMAScript Language Specification.
 This API can be re-entrant if getters are defined on the passed-in Object.
 
-### *napi_typeof*
+### napi_typeof
 <!-- YAML
 added: v8.0.0
 -->
@@ -2094,7 +2081,7 @@ the object as defined in [Section 12.5.5][] of the ECMAScript Language
 Specification. However, it has support for detecting an External value.
 If `value` has a type that is invalid, an error is returned.
 
-### *napi_instanceof*
+### napi_instanceof
 <!-- YAML
 added: v8.0.0
 -->
@@ -2119,7 +2106,7 @@ defined in
 [Section 12.10.4](https://tc39.github.io/ecma262/#sec-instanceofoperator)
 of the ECMAScript Language Specification.
 
-### *napi_is_array*
+### napi_is_array
 <!-- YAML
 added: v8.0.0
 -->
@@ -2137,7 +2124,7 @@ This API represents invoking the `IsArray` operation on the object
 as defined in [Section 7.2.2](https://tc39.github.io/ecma262/#sec-isarray)
 of the ECMAScript Language Specification.
 
-### *napi_is_arraybuffer*
+### napi_is_arraybuffer
 <!-- YAML
 added: v8.0.0
 -->
@@ -2153,7 +2140,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API checks if the Object passsed in is an array buffer.
 
-### *napi_is_buffer*
+### napi_is_buffer
 <!-- YAML
 added: v8.0.0
 -->
@@ -2170,7 +2157,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API checks if the Object passsed in is a buffer.
 
-### *napi_is_error*
+### napi_is_error
 <!-- YAML
 added: v8.0.0
 -->
@@ -2186,7 +2173,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API checks if the Object passsed in is an Error.
 
-### *napi_is_typedarray*
+### napi_is_typedarray
 <!-- YAML
 added: v8.0.0
 -->
@@ -2204,7 +2191,7 @@ This API checks if the Object passsed in is a typed array.
 
 
 
-### *napi_is_dataview*
+### napi_is_dataview
 <!-- YAML
 added: v8.3.0
 -->
@@ -2221,7 +2208,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API checks if the Object passed in is a DataView.
 
-### *napi_strict_equals*
+### napi_strict_equals
 <!-- YAML
 added: v8.0.0
 -->
@@ -2249,7 +2236,7 @@ of the ECMAScript Language Specification.
 N-API exposes a set of APIs to get and set properties on JavaScript
 objects. Some of these types are documented under
 [Section 7](https://tc39.github.io/ecma262/#sec-operations-on-objects) of the
-[ECMAScript Language Specification](https://tc39.github.io/ecma262/).
+[ECMAScript Language Specification][].
 
 Properties in JavaScript are represented as a tuple of a key and a value.
 Fundamentally, all property keys in N-API can be represented in one of the
@@ -2375,7 +2362,7 @@ if (status != napi_ok) return status;
 ```
 
 ### Structures
-#### *napi_property_attributes*
+#### napi_property_attributes
 ```C
 typedef enum {
   napi_default = 0,
@@ -2391,8 +2378,8 @@ typedef enum {
 
 `napi_property_attributes` are flags used to control the behavior of properties
 set on a JavaScript object. Other than `napi_static` they correspond to the
-attributes listed in [Section 6.1.7.1](https://tc39.github.io/ecma262/#table-2)
-of the [ECMAScript Language Specification](https://tc39.github.io/ecma262/).
+attributes listed in [Section 6.1.7.1][]
+of the [ECMAScript Language Specification][].
 They can be one or more of the following bitflags:
 
 - `napi_default` - Used to indicate that no explicit attributes are set on the
@@ -2400,16 +2387,14 @@ given property. By default, a property is read only, not enumerable and not
 configurable.
 - `napi_writable`  - Used to indicate that a given property is writable.
 - `napi_enumerable` - Used to indicate that a given property is enumerable.
-- `napi_configurable` - Used to indicate that a given property is
-configurable, as defined in
-[Section 6.1.7.1](https://tc39.github.io/ecma262/#table-2) of the
-[ECMAScript Language Specification](https://tc39.github.io/ecma262/).
+- `napi_configurable` - Used to indicate that a given property is configurable,
+as defined in [Section 6.1.7.1][] of the [ECMAScript Language Specification][].
 - `napi_static` - Used to indicate that the property will be defined as
 a static property on a class as opposed to an instance property, which is the
 default. This is used only by [`napi_define_class`][]. It is ignored by
 `napi_define_properties`.
 
-#### *napi_property_descriptor*
+#### napi_property_descriptor
 ```C
 typedef struct {
   // One of utf8name or name should be NULL.
@@ -2455,7 +2440,7 @@ this function is invoked.
 See [`napi_property_attributes`](#n_api_napi_property_attributes).
 
 ### Functions
-#### *napi_get_property_names*
+#### napi_get_property_names
 <!-- YAML
 added: v8.0.0
 -->
@@ -2476,7 +2461,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API returns the array of propertys for the Object passed in
 
-#### *napi_set_property*
+#### napi_set_property
 <!-- YAML
 added: v8.0.0
 -->
@@ -2496,7 +2481,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API set a property on the Object passed in.
 
-#### *napi_get_property*
+#### napi_get_property
 <!-- YAML
 added: v8.0.0
 -->
@@ -2517,7 +2502,7 @@ Returns `napi_ok` if the API succeeded.
 This API gets the requested property from the Object passed in.
 
 
-#### *napi_has_property*
+#### napi_has_property
 <!-- YAML
 added: v8.0.0
 -->
@@ -2538,7 +2523,7 @@ Returns `napi_ok` if the API succeeded.
 This API checks if the Object passed in has the named property.
 
 
-#### *napi_delete_property*
+#### napi_delete_property
 <!-- YAML
 added: v8.2.0
 -->
@@ -2560,7 +2545,7 @@ Returns `napi_ok` if the API succeeded.
 This API attempts to delete the `key` own property from `object`.
 
 
-#### *napi_has_own_property*
+#### napi_has_own_property
 <!-- YAML
 added: v8.2.0
 -->
@@ -2583,7 +2568,7 @@ be a string or a Symbol, or an error will be thrown. N-API will not perform any
 conversion between data types.
 
 
-#### *napi_set_named_property*
+#### napi_set_named_property
 <!-- YAML
 added: v8.0.0
 -->
@@ -2604,7 +2589,7 @@ Returns `napi_ok` if the API succeeded.
 This method is equivalent to calling [`napi_set_property`][] with a `napi_value`
 created from the string passed in as `utf8Name`
 
-#### *napi_get_named_property*
+#### napi_get_named_property
 <!-- YAML
 added: v8.0.0
 -->
@@ -2625,7 +2610,7 @@ Returns `napi_ok` if the API succeeded.
 This method is equivalent to calling [`napi_get_property`][] with a `napi_value`
 created from the string passed in as `utf8Name`
 
-#### *napi_has_named_property*
+#### napi_has_named_property
 <!-- YAML
 added: v8.0.0
 -->
@@ -2646,7 +2631,7 @@ Returns `napi_ok` if the API succeeded.
 This method is equivalent to calling [`napi_has_property`][] with a `napi_value`
 created from the string passed in as `utf8Name`
 
-#### *napi_set_element*
+#### napi_set_element
 <!-- YAML
 added: v8.0.0
 -->
@@ -2666,7 +2651,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API sets and element on the Object passed in.
 
-#### *napi_get_element*
+#### napi_get_element
 <!-- YAML
 added: v8.0.0
 -->
@@ -2686,7 +2671,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API gets the element at the requested index.
 
-#### *napi_has_element*
+#### napi_has_element
 <!-- YAML
 added: v8.0.0
 -->
@@ -2707,7 +2692,7 @@ Returns `napi_ok` if the API succeeded.
 This API returns if the Object passed in has an element at the
 requested index.
 
-#### *napi_delete_element*
+#### napi_delete_element
 <!-- YAML
 added: v8.2.0
 -->
@@ -2728,7 +2713,7 @@ Returns `napi_ok` if the API succeeded.
 
 This API attempts to delete the specified `index` from `object`.
 
-#### *napi_define_properties*
+#### napi_define_properties
 <!-- YAML
 added: v8.0.0
 -->
@@ -2771,7 +2756,7 @@ like a regular JavaScript function call, or as a constructor
 function.
 
 
-### *napi_call_function*
+### napi_call_function
 <!-- YAML
 added: v8.0.0
 -->
@@ -2837,7 +2822,7 @@ status = napi_get_value_int32(env, return_val, &result);
 if (status != napi_ok) return;
 ```
 
-### *napi_create_function*
+### napi_create_function
 <!-- YAML
 added: v8.0.0
 -->
@@ -2905,7 +2890,7 @@ myaddon.sayHello();
 `NAPI_MODULE` in the earlier snippet but the name of the target in `binding.gyp`
 responsible for creating the `.node` file.
 
-### *napi_get_cb_info*
+### napi_get_cb_info
 <!-- YAML
 added: v8.0.0
 -->
@@ -2935,7 +2920,7 @@ Returns `napi_ok` if the API succeeded.
 This method is used within a callback function to retrieve details about the
 call like the arguments and the `this` pointer from a given callback info.
 
-### *napi_get_new_target*
+### napi_get_new_target
 <!-- YAML
 added: v8.6.0
 -->
@@ -2954,7 +2939,7 @@ Returns `napi_ok` if the API succeeded.
 This API returns the `new.target` of the constructor call. If the current
 callback is not a constructor call, the result is `NULL`.
 
-### *napi_new_instance*
+### napi_new_instance
 <!-- YAML
 added: v8.0.0
 -->
@@ -3049,7 +3034,7 @@ if (is_instance) {
 
 The reference must be freed once it is no longer needed.
 
-### *napi_define_class*
+### napi_define_class
 <!-- YAML
 added: v8.0.0
 -->
@@ -3105,7 +3090,7 @@ case, to prevent the function value from being garbage-collected, create a
 persistent reference to it using [`napi_create_reference`][] and ensure the
 reference count is kept >= 1.
 
-### *napi_wrap*
+### napi_wrap
 <!-- YAML
 added: v8.0.0
 -->
@@ -3167,7 +3152,7 @@ native instance associated with it by virtue of a previous call to
 another native instance with the given object, call `napi_remove_wrap()` on it
 first.
 
-### *napi_unwrap*
+### napi_unwrap
 <!-- YAML
 added: v8.0.0
 -->
@@ -3192,7 +3177,7 @@ method or accessor, then the `this` argument to the callback is the wrapper
 object; the wrapped C++ instance that is the target of the call can be obtained
 then by calling `napi_unwrap()` on the wrapper object.
 
-### *napi_remove_wrap*
+### napi_remove_wrap
 <!-- YAML
 added: v8.5.0
 -->
@@ -3283,7 +3268,7 @@ napi_status napi_create_async_work(napi_env env,
 - `[in] env`: The environment that the API is invoked under.
 - `[in] async_resource`: An optional object associated with the async work
   that will be passed to possible async_hooks [`init` hooks][].
-- `[in] async_resource_name`: An identifier for the kind of resource that is
+- `[in] async_resource_name`: Identifier for the kind of resource that is
 being provided for diagnostic information exposed by the `async_hooks` API.
 - `[in] execute`: The native function which should be called to excute
 the logic asynchronously.
@@ -3368,7 +3353,7 @@ scenario, because with those the async execution still happens on the main
 event loop. When using any other async mechanism, the following APIs are
 necessary to ensure an async operation is properly tracked by the runtime.
 
-### *napi_async_init**
+### napi_async_init
 <!-- YAML
 added: v8.6.0
 -->
@@ -3382,14 +3367,14 @@ napi_status napi_async_init(napi_env env,
 - `[in] env`: The environment that the API is invoked under.
 - `[in] async_resource`: An optional object associated with the async work
   that will be passed to possible `async_hooks` [`init` hooks][].
-- `[in] async_resource_name`: Required identifier for the kind of resource
+- `[in] async_resource_name`: Identifier for the kind of resource
   that is being provided for diagnostic information exposed by the
   `async_hooks` API.
 - `[out] result`: The initialized async context.
 
 Returns `napi_ok` if the API succeeded.
 
-### *napi_async_destroy**
+### napi_async_destroy
 <!-- YAML
 added: v8.6.0
 -->
@@ -3403,7 +3388,7 @@ napi_status napi_async_destroy(napi_env env,
 
 Returns `napi_ok` if the API succeeded.
 
-### *napi_make_callback*
+### napi_make_callback
 <!-- YAML
 added: v8.0.0
 changes:
@@ -3716,8 +3701,14 @@ NAPI_EXTERN napi_status napi_get_uv_event_loop(napi_env env,
 [Object Lifetime Management]: #n_api_object_lifetime_management
 [Object Wrap]: #n_api_object_wrap
 [Script Execution]: #n_api_script_execution
+[Section 6.1.4]: https://tc39.github.io/ecma262/#sec-ecmascript-language-types-string-type
+[Section 6.1.6]: https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type
+[Section 6.1.7.1]: https://tc39.github.io/ecma262/#table-2
 [Section 9.1.6]: https://tc39.github.io/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-defineownproperty-p-desc
 [Section 12.5.5]: https://tc39.github.io/ecma262/#sec-typeof-operator
+[Section 22.1]: https://tc39.github.io/ecma262/#sec-array-objects
+[Section 22.2]: https://tc39.github.io/ecma262/#sec-typedarray-objects
+[Section 24.1]: https://tc39.github.io/ecma262/#sec-arraybuffer-objects
 [Section 24.3]: https://tc39.github.io/ecma262/#sec-dataview-objects
 [Section 25.4]: https://tc39.github.io/ecma262/#sec-promise-objects
 [Working with JavaScript Functions]: #n_api_working_with_javascript_functions

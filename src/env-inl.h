@@ -229,6 +229,10 @@ inline uint32_t Environment::ImmediateInfo::count() const {
   return fields_[kCount];
 }
 
+inline uint32_t Environment::ImmediateInfo::ref_count() const {
+  return fields_[kRefCount];
+}
+
 inline bool Environment::ImmediateInfo::has_outstanding() const {
   return fields_[kHasOutstanding] == 1;
 }
@@ -241,6 +245,14 @@ inline void Environment::ImmediateInfo::count_dec(uint32_t decrement) {
   fields_[kCount] = fields_[kCount] - decrement;
 }
 
+inline void Environment::ImmediateInfo::ref_count_inc(uint32_t increment) {
+  fields_[kRefCount] = fields_[kRefCount] + increment;
+}
+
+inline void Environment::ImmediateInfo::ref_count_dec(uint32_t decrement) {
+  fields_[kRefCount] = fields_[kRefCount] - decrement;
+}
+
 inline Environment::TickInfo::TickInfo(v8::Isolate* isolate)
     : fields_(isolate, kFieldsCount) {}
 
@@ -250,6 +262,14 @@ inline AliasedBuffer<uint8_t, v8::Uint8Array>& Environment::TickInfo::fields() {
 
 inline bool Environment::TickInfo::has_scheduled() const {
   return fields_[kHasScheduled] == 1;
+}
+
+inline bool Environment::TickInfo::has_promise_rejections() const {
+  return fields_[kHasPromiseRejections] == 1;
+}
+
+inline void Environment::TickInfo::promise_rejections_toggle_on() {
+  fields_[kHasPromiseRejections] = 1;
 }
 
 inline void Environment::AssignToContext(v8::Local<v8::Context> context,
@@ -302,7 +322,7 @@ inline Environment::Environment(IsolateData* isolate_data,
 #endif
       handle_cleanup_waiting_(0),
       http_parser_buffer_(nullptr),
-      fs_stats_field_array_(nullptr),
+      fs_stats_field_array_(isolate_, kFsStatsFieldsLength),
       context_(context->GetIsolate(), context) {
   // We'll be creating new objects so make sure we've entered the context.
   v8::HandleScope handle_scope(isolate());
@@ -324,7 +344,7 @@ inline Environment::Environment(IsolateData* isolate_data,
   AssignToContext(context, ContextInfo(""));
 
   destroy_async_id_list_.reserve(512);
-  performance_state_ = Calloc<performance::performance_state>(1);
+  performance_state_.reset(new performance::performance_state(isolate()));
   performance_state_->milestones[
       performance::NODE_PERFORMANCE_MILESTONE_ENVIRONMENT] =
           PERFORMANCE_NOW();
@@ -357,7 +377,6 @@ inline Environment::~Environment() {
   delete[] heap_statistics_buffer_;
   delete[] heap_space_statistics_buffer_;
   delete[] http_parser_buffer_;
-  free(performance_state_);
 }
 
 inline v8::Isolate* Environment::isolate() const {
@@ -527,31 +546,43 @@ inline void Environment::set_http2_state(
   http2_state_ = std::move(buffer);
 }
 
-inline double* Environment::fs_stats_field_array() const {
-  return fs_stats_field_array_;
+inline AliasedBuffer<double, v8::Float64Array>*
+Environment::fs_stats_field_array() {
+  return &fs_stats_field_array_;
 }
 
-inline void Environment::set_fs_stats_field_array(double* fields) {
-  CHECK_EQ(fs_stats_field_array_, nullptr);  // Should be set only once.
-  fs_stats_field_array_ = fields;
+void Environment::CreateImmediate(native_immediate_callback cb,
+                               void* data,
+                               v8::Local<v8::Object> obj,
+                               bool ref) {
+  native_immediate_callbacks_.push_back({
+    cb,
+    data,
+    std::unique_ptr<v8::Persistent<v8::Object>>(obj.IsEmpty() ?
+        nullptr : new v8::Persistent<v8::Object>(isolate_, obj)),
+    ref
+  });
+  immediate_info()->count_inc(1);
 }
 
 void Environment::SetImmediate(native_immediate_callback cb,
                                void* data,
                                v8::Local<v8::Object> obj) {
-  native_immediate_callbacks_.push_back({
-    cb,
-    data,
-    std::unique_ptr<v8::Persistent<v8::Object>>(
-        obj.IsEmpty() ? nullptr : new v8::Persistent<v8::Object>(isolate_, obj))
-  });
-  if (immediate_info()->count() == 0)
-    ActivateImmediateCheck();
-  immediate_info()->count_inc(1);
+  CreateImmediate(cb, data, obj, true);
+
+  if (immediate_info()->ref_count() == 0)
+    ToggleImmediateRef(true);
+  immediate_info()->ref_count_inc(1);
+}
+
+void Environment::SetUnrefImmediate(native_immediate_callback cb,
+                                    void* data,
+                                    v8::Local<v8::Object> obj) {
+  CreateImmediate(cb, data, obj, false);
 }
 
 inline performance::performance_state* Environment::performance_state() {
-  return performance_state_;
+  return performance_state_.get();
 }
 
 inline std::map<std::string, uint64_t>* Environment::performance_marks() {

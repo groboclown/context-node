@@ -48,7 +48,7 @@ struct nghttp2_rcbuf;
 namespace node {
 
 namespace performance {
-struct performance_state;
+class performance_state;
 }
 
 namespace loader {
@@ -193,14 +193,12 @@ class ModuleWrap;
   V(onheaders_string, "onheaders")                                            \
   V(onmessage_string, "onmessage")                                            \
   V(onnewsession_string, "onnewsession")                                      \
-  V(onnewsessiondone_string, "onnewsessiondone")                              \
   V(onocspresponse_string, "onocspresponse")                                  \
   V(ongoawaydata_string, "ongoawaydata")                                      \
   V(onpriority_string, "onpriority")                                          \
   V(onread_string, "onread")                                                  \
   V(onreadstart_string, "onreadstart")                                        \
   V(onreadstop_string, "onreadstop")                                          \
-  V(onselect_string, "onselect")                                              \
   V(onsettings_string, "onsettings")                                          \
   V(onshutdown_string, "onshutdown")                                          \
   V(onsignal_string, "onsignal")                                              \
@@ -224,7 +222,6 @@ class ModuleWrap;
   V(raw_string, "raw")                                                        \
   V(read_host_object_string, "_readHostObject")                               \
   V(readable_string, "readable")                                              \
-  V(received_shutdown_string, "receivedShutdown")                             \
   V(refresh_string, "refresh")                                                \
   V(regexp_string, "regexp")                                                  \
   V(rename_string, "rename")                                                  \
@@ -232,7 +229,6 @@ class ModuleWrap;
   V(retry_string, "retry")                                                    \
   V(serial_string, "serial")                                                  \
   V(scopeid_string, "scopeid")                                                \
-  V(sent_shutdown_string, "sentShutdown")                                     \
   V(serial_number_string, "serialNumber")                                     \
   V(service_string, "service")                                                \
   V(servername_string, "servername")                                          \
@@ -297,7 +293,8 @@ class ModuleWrap;
   V(performance_entry_callback, v8::Function)                                 \
   V(performance_entry_template, v8::Function)                                 \
   V(process_object, v8::Object)                                               \
-  V(promise_reject_function, v8::Function)                                    \
+  V(promise_reject_handled_function, v8::Function)                            \
+  V(promise_reject_unhandled_function, v8::Function)                          \
   V(promise_wrap_template, v8::ObjectTemplate)                                \
   V(push_values_to_array_function, v8::Function)                              \
   V(randombytes_constructor_template, v8::ObjectTemplate)                     \
@@ -457,10 +454,14 @@ class Environment {
    public:
     inline AliasedBuffer<uint32_t, v8::Uint32Array>& fields();
     inline uint32_t count() const;
+    inline uint32_t ref_count() const;
     inline bool has_outstanding() const;
 
     inline void count_inc(uint32_t increment);
     inline void count_dec(uint32_t decrement);
+
+    inline void ref_count_inc(uint32_t increment);
+    inline void ref_count_dec(uint32_t decrement);
 
    private:
     friend class Environment;  // So we can call the constructor.
@@ -468,6 +469,7 @@ class Environment {
 
     enum Fields {
       kCount,
+      kRefCount,
       kHasOutstanding,
       kFieldsCount
     };
@@ -481,6 +483,9 @@ class Environment {
    public:
     inline AliasedBuffer<uint8_t, v8::Uint8Array>& fields();
     inline bool has_scheduled() const;
+    inline bool has_promise_rejections() const;
+
+    inline void promise_rejections_toggle_on();
 
    private:
     friend class Environment;  // So we can call the constructor.
@@ -488,6 +493,7 @@ class Environment {
 
     enum Fields {
       kHasScheduled,
+      kHasPromiseRejections,
       kFieldsCount
     };
 
@@ -604,8 +610,7 @@ class Environment {
   inline http2::http2_state* http2_state() const;
   inline void set_http2_state(std::unique_ptr<http2::http2_state> state);
 
-  inline double* fs_stats_field_array() const;
-  inline void set_fs_stats_field_array(double* fields);
+  inline AliasedBuffer<double, v8::Float64Array>* fs_stats_field_array();
 
   inline performance::performance_state* performance_state();
   inline std::map<std::string, uint64_t>* performance_marks();
@@ -652,6 +657,8 @@ class Environment {
                                 const char* name,
                                 v8::FunctionCallback callback);
 
+  void BeforeExit(void (*cb)(void* arg), void* arg);
+  void RunBeforeExitCallbacks();
   void AtExit(void (*cb)(void* arg), void* arg);
   void RunAtExitCallbacks();
 
@@ -698,8 +705,12 @@ class Environment {
   inline void SetImmediate(native_immediate_callback cb,
                            void* data,
                            v8::Local<v8::Object> obj = v8::Local<v8::Object>());
+  inline void SetUnrefImmediate(native_immediate_callback cb,
+                                void* data,
+                                v8::Local<v8::Object> obj =
+                                    v8::Local<v8::Object>());
   // This needs to be available for the JS-land setImmediate().
-  void ActivateImmediateCheck();
+  void ToggleImmediateRef(bool ref);
 
   class ShouldNotAbortOnUncaughtScope {
    public:
@@ -716,6 +727,11 @@ class Environment {
   static inline Environment* ForAsyncHooks(AsyncHooks* hooks);
 
  private:
+  inline void CreateImmediate(native_immediate_callback cb,
+                              void* data,
+                              v8::Local<v8::Object> obj,
+                              bool ref);
+
   inline void ThrowError(v8::Local<v8::Value> (*fun)(v8::Local<v8::String>),
                          const char* errmsg);
 
@@ -742,13 +758,19 @@ class Environment {
 
   int should_not_abort_scope_counter_ = 0;
 
-  performance::performance_state* performance_state_ = nullptr;
+  std::unique_ptr<performance::performance_state> performance_state_;
   std::map<std::string, uint64_t> performance_marks_;
 
 #if HAVE_INSPECTOR
   std::unique_ptr<inspector::Agent> inspector_agent_;
 #endif
 
+  // handle_wrap_queue_ and req_wrap_queue_ needs to be at a fixed offset from
+  // the start of the class because it is used by
+  // src/node_postmortem_metadata.cc to calculate offsets and generate debug
+  // symbols for Environment, which assumes that the position of members in
+  // memory are predictable. For more information please refer to
+  // `doc/guides/node-postmortem-support.md`
   HandleWrapQueue handle_wrap_queue_;
   ReqWrapQueue req_wrap_queue_;
   ListHead<HandleCleanup,
@@ -761,7 +783,16 @@ class Environment {
   char* http_parser_buffer_;
   std::unique_ptr<http2::http2_state> http2_state_;
 
-  double* fs_stats_field_array_;
+  // stat fields contains twice the number of entries because `fs.StatWatcher`
+  // needs room to store data for *two* `fs.Stats` instances.
+  static const int kFsStatsFieldsLength = 2 * 14;
+  AliasedBuffer<double, v8::Float64Array> fs_stats_field_array_;
+
+  struct BeforeExitCallback {
+    void (*cb_)(void* arg);
+    void* arg_;
+  };
+  std::list<BeforeExitCallback> before_exit_functions_;
 
   struct AtExitCallback {
     void (*cb_)(void* arg);
@@ -780,6 +811,7 @@ class Environment {
     native_immediate_callback cb_;
     void* data_;
     std::unique_ptr<v8::Persistent<v8::Object>> keep_alive_;
+    bool refed_;
   };
   std::vector<NativeImmediateCallback> native_immediate_callbacks_;
   void RunAndClearNativeImmediates();

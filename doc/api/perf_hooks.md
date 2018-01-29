@@ -29,6 +29,14 @@ added: v8.5.0
 The `Performance` provides access to performance metric data. A single
 instance of this class is provided via the `performance` property.
 
+### performance.clearEntries(name)
+<!-- YAML
+added: REPLACEME
+-->
+
+Remove all performance entry objects with `entryType` equal to `name` from the
+Performance Timeline.
+
 ### performance.clearFunctions([name])
 <!-- YAML
 added: v8.5.0
@@ -38,6 +46,14 @@ added: v8.5.0
 
 If `name` is not provided, removes all `PerformanceFunction` objects from the
 Performance Timeline. If `name` is provided, removes entries with `name`.
+
+### performance.clearGC()
+<!-- YAML
+added: v8.5.0
+-->
+
+Remove all performance entry objects with `entryType` equal to `gc` from the
+Performance Timeline.
 
 ### performance.clearMarks([name])
 <!-- YAML

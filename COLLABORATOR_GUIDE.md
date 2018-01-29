@@ -437,7 +437,7 @@ The TSC should serve as the final arbiter where required.
       author when squashing.
 
 Review the commit message to ensure that it adheres to the guidelines outlined
-in the [contributing](./CONTRIBUTING.md#commit-message-guidelines) guide.
+in the [contributing](./doc/guides/contributing/pull-requests.md#commit-message-guidelines) guide.
 
 Add all necessary [metadata](#metadata) to commit messages before landing.
 
@@ -467,7 +467,7 @@ $ git checkout master
 ```
 
 Update the tree (assumes your repo is set up as detailed in
-[CONTRIBUTING.md](CONTRIBUTING.md#step-1-fork)):
+[CONTRIBUTING.md](./doc/guides/contributing/pull-requests.md#step-1-fork)):
 
 ```text
 $ git fetch upstream
@@ -562,7 +562,7 @@ commit logs, ensure that they are properly formatted, and add
 `Reviewed-By` lines.
 
 * The commit message text must conform to the
-[commit message guidelines](./CONTRIBUTING.md#commit-message-guidelines).
+[commit message guidelines](./doc/guides/contributing/pull-requests.md#commit-message-guidelines).
 
 <a name="metadata"></a>
 * Modify the original commit message to include additional metadata regarding
@@ -623,7 +623,7 @@ error: failed to push some refs to 'https://github.com/nodejs/node'
 hint: Updates were rejected because the remote contains work that you do
 hint: not have locally. This is usually caused by another repository pushing
 hint: to the same ref. You may want to first integrate the remote changes
-hint: (e.g., 'git pull ...') before pushing again.
+hint: (e.g. 'git pull ...') before pushing again.
 hint: See the 'Note about fast-forwards' in 'git push --help' for details.
 ```
 

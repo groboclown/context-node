@@ -878,7 +878,6 @@ def configure_node(o):
     configure_mips(o)
 
   if flavor == 'aix':
-    o['variables']['node_core_target_name'] = 'node_base'
     o['variables']['node_target_type'] = 'static_library'
 
   if target_arch in ('x86', 'x64', 'ia32', 'x32'):
@@ -900,8 +899,6 @@ def configure_node(o):
       if options.systemtap_includes:
         o['include_dirs'] += [options.systemtap_includes]
     o['variables']['node_use_dtrace'] = b(use_dtrace)
-    o['variables']['uv_use_dtrace'] = b(use_dtrace)
-    o['variables']['uv_parent_path'] = '/deps/uv/'
   elif options.with_dtrace:
     raise Exception(
        'DTrace is currently only supported on SunOS, MacOS or Linux systems.')
@@ -978,7 +975,6 @@ def configure_node(o):
     o['variables']['library_files'] = options.linked_module
 
   o['variables']['asan'] = int(options.enable_asan or 0)
-  o['variables']['debug_devtools'] = 'node'
 
   if options.use_xcode and options.use_ninja:
     raise Exception('--xcode and --ninja cannot be used together.')
@@ -987,6 +983,13 @@ def configure_node(o):
     o['variables']['coverage'] = 'true'
   else:
     o['variables']['coverage'] = 'false'
+
+  if options.shared:
+    o['variables']['node_target_type'] = 'shared_library'
+  elif options.enable_static:
+    o['variables']['node_target_type'] = 'static_library'
+  else:
+    o['variables']['node_target_type'] = 'executable'
 
 def configure_library(lib, output):
   shared_lib = 'shared_' + lib
@@ -1126,8 +1129,8 @@ def glob_to_var(dir_base, dir_sub, patch_dir):
 def configure_intl(o):
   icus = [
     {
-      'url': 'https://ssl.icu-project.org/files/icu4c/60.1/icu4c-60_1-src.zip',
-      'md5': 'e6cb990ac2a3161d31a3def8435f80cb',
+      'url': 'https://ssl.icu-project.org/files/icu4c/60.2/icu4c-60_2-src.zip',
+      'md5': '115908818fd0324530b2acb1b029738d',
     },
   ]
   def icu_download(path):
@@ -1350,8 +1353,6 @@ def configure_intl(o):
   # this is the input '.dat' file to use .. icudt*.dat
   # may be little-endian if from a icu-project.org tarball
   o['variables']['icu_data_in'] = icu_data_in
-  # this is the icudt*.dat file which node will be using (platform endianness)
-  o['variables']['icu_data_file'] = icu_data_file
   if not os.path.isfile(icu_data_path):
     print('Error: ICU prebuilt data file %s does not exist.' % icu_data_path)
     print('See the README.md.')
@@ -1488,6 +1489,7 @@ config = {
   'BUILDTYPE': 'Debug' if options.debug else 'Release',
   'USE_XCODE': str(int(options.use_xcode or 0)),
   'PYTHON': sys.executable,
+  'NODE_TARGET_TYPE': variables['node_target_type'],
 }
 
 if options.prefix:

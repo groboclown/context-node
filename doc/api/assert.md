@@ -18,6 +18,9 @@ For more information about the used equality comparisons see
 added: REPLACEME
 changes:
   - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/REPLACEME
+    description: Added error diffs to the strict mode
+  - version: REPLACEME
     pr-url: https://github.com/nodejs/node/pull/17002
     description: Added strict mode to the assert module.
 -->
@@ -26,11 +29,44 @@ When using the `strict mode`, any `assert` function will use the equality used i
 the strict function mode. So [`assert.deepEqual()`][] will, for example, work the
 same as [`assert.deepStrictEqual()`][].
 
+On top of that, error messages which involve objects produce an error diff
+instead of displaying both objects. That is not the case for the legacy mode.
+
 It can be accessed using:
 
 ```js
 const assert = require('assert').strict;
 ```
+
+Example error diff (the `expected`, `actual`, and `Lines skipped` will be on a
+single row):
+
+```js
+const assert = require('assert').strict;
+
+assert.deepEqual([[[1, 2, 3]], 4, 5], [[[1, 2, '3']], 4, 5]);
+```
+
+```diff
+AssertionError [ERR_ASSERTION]: Input A expected to deepStrictEqual input B:
++ expected
+- actual
+... Lines skipped
+
+  [
+    [
+...
+      2,
+-     3
++     '3'
+    ],
+...
+    5
+  ]
+```
+
+To deactivate the colors, use the `NODE_DISABLE_COLORS` environment variable.
+Please note that this will also deactivate the colors in the REPL.
 
 ## Legacy mode
 
@@ -375,7 +411,7 @@ added: v0.1.21
 * `expected` {any}
 * `message` {any} **Default:** `'Failed'`
 * `operator` {string} **Default:** '!='
-* `stackStartFunction` {function} **Default:** `assert.fail`
+* `stackStartFunction` {Function} **Default:** `assert.fail`
 
 Throws an `AssertionError`. If `message` is falsy, the error message is set as
 the values of `actual` and `expected` separated by the provided `operator`. If
@@ -433,23 +469,32 @@ suppressFrame();
 ## assert.ifError(value)
 <!-- YAML
 added: v0.1.97
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/18247
+    description: Instead of throwing the original error it is now wrapped into
+                 a AssertionError that contains the full stack trace.
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/18247
+    description: Value may now only be `undefined` or `null`. Before any truthy
+                 input was accepted.
 -->
 * `value` {any}
 
-Throws `value` if `value` is truthy. This is useful when testing the `error`
-argument in callbacks.
+Throws `value` if `value` is not `undefined` or `null`. This is useful when
+testing the `error` argument in callbacks.
 
 ```js
 const assert = require('assert').strict;
 
-assert.ifError(0);
+assert.ifError(null);
 // OK
-assert.ifError(1);
-// Throws 1
+assert.ifError(0);
+// AssertionError [ERR_ASSERTION]: ifError got unwanted exception: 0
 assert.ifError('error');
-// Throws 'error'
+// AssertionError [ERR_ASSERTION]: ifError got unwanted exception: 'error'
 assert.ifError(new Error());
-// Throws Error
+// AssertionError [ERR_ASSERTION]: ifError got unwanted exception: Error
 ```
 
 ## assert.notDeepEqual(actual, expected[, message])
@@ -645,6 +690,11 @@ parameter is an instance of an [`Error`][] then it will be thrown instead of the
 ## assert.ok(value[, message])
 <!-- YAML
 added: v0.1.21
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/17581
+    description: assert.ok() will throw a `ERR_MISSING_ARGS` error.
+                 Use assert.fail() instead.
 -->
 * `value` {any}
 * `message` {any}
@@ -658,6 +708,9 @@ parameter is `undefined`, a default error message is assigned. If the `message`
 parameter is an instance of an [`Error`][] then it will be thrown instead of the
 `AssertionError`.
 
+Be aware that in the `repl` the error message will be different to the one
+thrown in a file! See below for further details.
+
 ```js
 const assert = require('assert').strict;
 
@@ -665,12 +718,40 @@ assert.ok(true);
 // OK
 assert.ok(1);
 // OK
-assert.ok(false);
-// throws "AssertionError: false == true"
-assert.ok(0);
-// throws "AssertionError: 0 == true"
+
 assert.ok(false, 'it\'s false');
 // throws "AssertionError: it's false"
+
+// In the repl:
+assert.ok(typeof 123 === 'string');
+// throws:
+// "AssertionError: false == true
+
+// In a file (e.g. test.js):
+assert.ok(typeof 123 === 'string');
+// throws:
+// "AssertionError: The expression evaluated to a falsy value:
+//
+//   assert.ok(typeof 123 === 'string')
+
+assert.ok(false);
+// throws:
+// "AssertionError: The expression evaluated to a falsy value:
+//
+//   assert.ok(false)
+
+assert.ok(0);
+// throws:
+// "AssertionError: The expression evaluated to a falsy value:
+//
+//   assert.ok(0)
+
+// Using `assert()` works the same:
+assert(0);
+// throws:
+// "AssertionError: The expression evaluated to a falsy value:
+//
+//   assert(0)
 ```
 
 ## assert.strictEqual(actual, expected[, message])
@@ -719,7 +800,7 @@ changes:
     description: The `error` parameter can now be an arrow function.
 -->
 * `block` {Function}
-* `error` {RegExp|Function|object}
+* `error` {RegExp|Function|Object}
 * `message` {any}
 
 Expects the function `block` to throw an error.
@@ -827,6 +908,7 @@ Due to the confusing notation, it is recommended not to use a string as the
 second argument. This might lead to difficult-to-spot errors.
 
 [`Error.captureStackTrace`]: errors.html#errors_error_capturestacktrace_targetobject_constructoropt
+[`Error`]: errors.html#errors_class_error
 [`Map`]: https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Map
 [`Object.is()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is
 [`RegExp`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions

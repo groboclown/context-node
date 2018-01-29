@@ -268,6 +268,17 @@ fail.
 
 If `fn` is not provided, an empty function will be used.
 
+### mustCallAsync([fn][, exact])
+* `fn` [&lt;Function>]
+* `exact` [&lt;Number>] default = 1
+* return [&lt;Function>]
+
+The same as `mustCall()`, except that it is also checked that the Promise
+returned by the function is fulfilled for each invocation of the function.
+
+The return value of the wrapped function is the return value of the original
+function, if necessary wrapped as a promise.
+
 ### mustCallAtLeast([fn][, minimum])
 * `fn` [&lt;Function>] default = () => {}
 * `minimum` [&lt;Number>] default = 1
@@ -652,7 +663,7 @@ internet-related tests.
 A set of addresses for internet-related tests. All properties are configurable
 via `NODE_TEST_*` environment variables. For example, to configure
 `internet.addresses.INET_HOST`, set the environment
-vairable `NODE_TEST_INET_HOST` to a specified host.
+variable `NODE_TEST_INET_HOST` to a specified host.
 
 ## WPT Module
 

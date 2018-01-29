@@ -468,7 +468,7 @@ added: v0.1.27
 
 * {string}
 
-The directory name of the current module. This the same as the
+The directory name of the current module. This is the same as the
 [`path.dirname()`][] of the [`__filename`][].
 
 Example: running `node example.js` from `/Users/mjr`
@@ -626,9 +626,11 @@ added: v8.9.0
 -->
 
 * `request` {string} The module path whose lookup paths are being retrieved.
-* Returns: {Array}
+* Returns: {Array|null}
 
-Returns an array containing the paths searched during resolution of `request`.
+Returns an array containing the paths searched during resolution of `request` or
+null if the `request` string references a core module, for example `http` or
+`fs`.
 
 ## The `module` Object
 <!-- YAML

@@ -511,14 +511,18 @@ console.log(buf2.toString());
 <!-- YAML
 added: v5.10.0
 changes:
-  - version: v8.9.3
-    pr-url: https://github.com/nodejs/node/pull/17428
-    description: Specifying an invalid string for `fill` now results in a
-                 zero-filled buffer.
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/18129
+    description: Attempting to fill a non-zero length buffer with a zero length
+                 buffer triggers a thrown exception.
   - version: REPLACEME
     pr-url: https://github.com/nodejs/node/pull/17427
     description: Specifying an invalid string for `fill` triggers a thrown
                  exception.
+  - version: v8.9.3
+    pr-url: https://github.com/nodejs/node/pull/17428
+    description: Specifying an invalid string for `fill` now results in a
+                 zero-filled buffer.
 -->
 
 * `size` {integer} The desired length of the new `Buffer`.
@@ -1224,13 +1228,17 @@ console.log(buf1.equals(buf3));
 <!-- YAML
 added: v0.5.0
 changes:
-  - version: v5.7.0
-    pr-url: https://github.com/nodejs/node/pull/4935
-    description: The `encoding` parameter is supported now.
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/18129
+    description: Attempting to fill a non-zero length buffer with a zero length
+                 buffer triggers a thrown exception.
   - version: REPLACEME
     pr-url: https://github.com/nodejs/node/pull/17427
     description: Specifying an invalid string for `value` triggers a thrown
                  exception.
+  - version: v5.7.0
+    pr-url: https://github.com/nodejs/node/pull/4935
+    description: The `encoding` parameter is supported now.
 -->
 
 * `value` {string|Buffer|integer} The value to fill `buf` with.
@@ -1591,7 +1599,7 @@ endian format (`readDoubleBE()` returns big endian, `readDoubleLE()` returns
 little endian).
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Examples:
 
@@ -1627,7 +1635,7 @@ endian format (`readFloatBE()` returns big endian, `readFloatLE()` returns
 little endian).
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Examples:
 
@@ -1660,7 +1668,7 @@ added: v0.5.0
 Reads a signed 8-bit integer from `buf` at the specified `offset`.
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Integers read from a `Buffer` are interpreted as two's complement signed values.
 
@@ -1694,7 +1702,7 @@ the specified endian format (`readInt16BE()` returns big endian,
 `readInt16LE()` returns little endian).
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Integers read from a `Buffer` are interpreted as two's complement signed values.
 
@@ -1728,7 +1736,7 @@ the specified endian format (`readInt32BE()` returns big endian,
 `readInt32LE()` returns little endian).
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Integers read from a `Buffer` are interpreted as two's complement signed values.
 
@@ -1763,7 +1771,7 @@ and interprets the result as a two's complement signed value. Supports up to 48
 bits of accuracy.
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Examples:
 
@@ -1795,7 +1803,7 @@ added: v0.5.0
 Reads an unsigned 8-bit integer from `buf` at the specified `offset`.
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Examples:
 
@@ -1827,7 +1835,7 @@ specified endian format (`readUInt16BE()` returns big endian, `readUInt16LE()`
 returns little endian).
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Examples:
 
@@ -1865,7 +1873,7 @@ specified endian format (`readUInt32BE()` returns big endian,
 `readUInt32LE()` returns little endian).
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Examples:
 
@@ -1898,7 +1906,7 @@ and interprets the result as an unsigned integer. Supports up to 48
 bits of accuracy.
 
 Setting `noAssert` to `true` allows `offset` to be beyond the end of `buf`, but
-the result should be considered undefined behavior.
+the resulting behavior is undefined.
 
 Examples:
 
@@ -2236,7 +2244,7 @@ endian). `value` *should* be a valid 64-bit double. Behavior is undefined when
 `value` is anything other than a 64-bit double.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 Examples:
 
@@ -2271,7 +2279,7 @@ endian). `value` *should* be a valid 32-bit float. Behavior is undefined when
 `value` is anything other than a 32-bit float.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 Examples:
 
@@ -2304,7 +2312,7 @@ signed 8-bit integer. Behavior is undefined when `value` is anything other than
 a signed 8-bit integer.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 `value` is interpreted and written as a two's complement signed integer.
 
@@ -2337,7 +2345,7 @@ endian). `value` *should* be a valid signed 16-bit integer. Behavior is undefine
 when `value` is anything other than a signed 16-bit integer.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 `value` is interpreted and written as a two's complement signed integer.
 
@@ -2370,7 +2378,7 @@ endian). `value` *should* be a valid signed 32-bit integer. Behavior is undefine
 when `value` is anything other than a signed 32-bit integer.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 `value` is interpreted and written as a two's complement signed integer.
 
@@ -2404,7 +2412,7 @@ Supports up to 48 bits of accuracy. Behavior is undefined when `value` is
 anything other than a signed integer.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 Examples:
 
@@ -2437,7 +2445,7 @@ valid unsigned 8-bit integer. Behavior is undefined when `value` is anything
 other than an unsigned 8-bit integer.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 Examples:
 
@@ -2470,7 +2478,7 @@ endian). `value` should be a valid unsigned 16-bit integer. Behavior is
 undefined when `value` is anything other than an unsigned 16-bit integer.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 Examples:
 
@@ -2507,7 +2515,7 @@ endian). `value` should be a valid unsigned 32-bit integer. Behavior is
 undefined when `value` is anything other than an unsigned 32-bit integer.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 Examples:
 
@@ -2543,7 +2551,7 @@ Supports up to 48 bits of accuracy. Behavior is undefined when `value` is
 anything other than an unsigned integer.
 
 Setting `noAssert` to `true` allows the encoded form of `value` to extend beyond
-the end of `buf`, but the result should be considered undefined behavior.
+the end of `buf`, but the resulting behavior is undefined.
 
 Examples:
 

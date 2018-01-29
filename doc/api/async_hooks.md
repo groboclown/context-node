@@ -244,10 +244,10 @@ RANDOMBYTESREQUEST, TLSWRAP, Timeout, Immediate, TickObject
 There is also the `PROMISE` resource type, which is used to track `Promise`
 instances and asynchronous work scheduled by them.
 
-Users are be able to define their own `type` when using the public embedder API.
+Users are able to define their own `type` when using the public embedder API.
 
 *Note:* It is possible to have type name collisions. Embedders are encouraged
-to use a unique prefixes, such as the npm package name, to prevent collisions
+to use unique prefixes, such as the npm package name, to prevent collisions
 when listening to the hooks.
 
 ###### `triggerId`
@@ -470,6 +470,14 @@ init for PROMISE with id 6, trigger id: 5  # the Promise returned by then()
 
 #### `async_hooks.executionAsyncId()`
 
+<!-- YAML
+added: v8.1.0
+changes:
+  - version: v8.2.0
+    pr-url: https://github.com/nodejs/node/pull/13490
+    description: Renamed from currentId
+-->
+
 * Returns: {number} The `asyncId` of the current execution context. Useful to
   track when something calls.
 
@@ -484,7 +492,7 @@ fs.open(path, 'r', (err, fd) => {
 });
 ```
 
-The ID returned fom `executionAsyncId()` is related to execution timing, not
+The ID returned from `executionAsyncId()` is related to execution timing, not
 causality (which is covered by `triggerAsyncId()`). For example:
 
 ```js

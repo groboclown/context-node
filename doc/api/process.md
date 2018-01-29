@@ -1405,6 +1405,19 @@ event loop **before** additional I/O is processed.  As a result,
 recursively setting nextTick callbacks will block any I/O from
 happening, just like a `while(true);` loop.
 
+## process.noDeprecation
+<!-- YAML
+added: v0.8.0
+-->
+
+* {boolean}
+
+The `process.noDeprecation` property indicates whether the `--no-deprecation`
+flag is set on the current Node.js process. See the documentation for
+the [`warning` event][process_warning] and the
+[`emitWarning` method][process_emit_warning] for more information about this
+flag's behavior.
+
 ## process.pid
 <!-- YAML
 added: v0.1.15
@@ -1426,12 +1439,25 @@ added: v0.1.16
 * {string}
 
 The `process.platform` property returns a string identifying the operating
-system platform on which the Node.js process is running. For instance
-`'darwin'`, `'freebsd'`, `'linux'`, `'sunos'` or `'win32'`
+system platform on which the Node.js process is running.
+
+Currently possible values are:
+
+* `'aix'`
+* `'darwin'`
+* `'freebsd'`
+* `'linux'`
+* `'openbsd'`
+* `'sunos'`
+* `'win32'`
 
 ```js
 console.log(`This platform is ${process.platform}`);
 ```
+
+The value `'android'` may also be returned if the Node.js is built on the
+Android operating system. However, Android support in Node.js
+[is experimental][Supported platforms].
 
 ## process.ppid
 <!-- YAML
@@ -1778,6 +1804,19 @@ false
 
 See the [TTY][] documentation for more information.
 
+## process.throwDeprecation
+<!-- YAML
+added: v0.9.12
+-->
+
+* {boolean}
+
+The `process.throwDeprecation` property indicates whether the
+`--throw-deprecation` flag is set on the current Node.js process. See the
+documentation for the [`warning` event][process_warning] and the
+[`emitWarning` method][process_emit_warning] for more information about this
+flag's behavior.
+
 ## process.title
 <!-- YAML
 added: v0.1.104
@@ -1797,6 +1836,19 @@ because setting the `process.title` overwrites the `argv` memory of the
 process.  Node.js v0.8 allowed for longer process title strings by also
 overwriting the `environ` memory but that was potentially insecure and
 confusing in some (rather obscure) cases.
+
+## process.traceDeprecation
+<!-- YAML
+added: v0.8.0
+-->
+
+* {boolean}
+
+The `process.traceDeprecation` property indicates whether the
+`--trace-deprecation` flag is set on the current Node.js process. See the
+documentation for the [`warning` event][process_warning] and the
+[`emitWarning` method][process_emit_warning] for more information about this
+flag's behavior.
 
 ## process.umask([mask])
 <!-- YAML
@@ -1872,18 +1924,19 @@ Will generate an object similar to:
 
 <!-- eslint-skip -->
 ```js
-{
-  http_parser: '2.3.0',
-  node: '1.1.1',
-  v8: '6.1.534.42-node.0',
-  uv: '1.3.0',
-  zlib: '1.2.8',
-  ares: '1.10.0-DEV',
-  modules: '43',
-  icu: '55.1',
-  openssl: '1.0.1k',
-  unicode: '8.0',
-  cldr: '29.0',
+{ http_parser: '2.7.0',
+  node: '8.9.0',
+  v8: '6.3.292.48-node.6',
+  uv: '1.18.0',
+  zlib: '1.2.11',
+  ares: '1.13.0',
+  modules: '60',
+  nghttp2: '1.29.0',
+  napi: '2',
+  openssl: '1.0.2n',
+  icu: '60.1',
+  unicode: '10.0',
+  cldr: '32.0',
   tz: '2016b' }
 ```
 
@@ -1977,5 +2030,6 @@ cases:
 [Readable]: stream.html#stream_readable_streams
 [Signal Events]: #process_signal_events
 [Stream compatibility]: stream.html#stream_compatibility_with_older_node_js_versions
+[Supported platforms]: https://github.com/nodejs/node/blob/master/BUILDING.md#supported-platforms-1
 [TTY]: tty.html#tty_tty
 [Writable]: stream.html#stream_writable_streams

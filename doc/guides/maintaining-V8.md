@@ -29,8 +29,7 @@ For example, at the time of this writing:
   released as part of the Chromium **canary** builds. This branch will be
   promoted to beta next when V8 5.5 ships as stable.
 
-All older branches are considered **abandoned**, and are not maintained by the
-V8 team.
+All older branches are abandoned and are not maintained by the V8 team.
 
 ### V8 merge process overview
 
@@ -144,9 +143,10 @@ includes the following branches<sup>1</sup>:
 </table>
 
 
-The versions of V8 used in Node.js v4.x and v6.x have already been abandoned by
-upstream V8. However, Node.js needs to continue supporting these branches for
-many months (Current branches) or several years (LTS branches).
+The versions of V8 used in Node.js v4.x, v6.x, and 8.x have already been
+abandoned by upstream V8. However, Node.js needs to continue supporting
+these branches for many months (Current branches) or several
+years (LTS branches).
 
 ## Maintenance Process
 
