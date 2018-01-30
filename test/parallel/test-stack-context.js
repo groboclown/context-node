@@ -41,7 +41,7 @@ try {
     {
       code: 'ERR_INVALID_ARG_VALUE',
       type: Error,
-      message: 'The value "a" is invalid for argument "frameId"'
+      message: 'The argument \'frameId\' is invalid. Received \'a\''
     }
   );
 
