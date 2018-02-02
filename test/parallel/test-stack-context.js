@@ -5,8 +5,6 @@ const assert = require('assert');
 const stackContext = require('context');
 
 function createRequiredController(data) {
-  console.log('*********************** passing in required controller ' +
-    'required "allow" value ' + data.allow);
   const d = {
     createChild: function(contextData) {
       return createRequiredController(contextData);

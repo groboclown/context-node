@@ -1,10 +1,9 @@
 'use strict';
 const common = require('../common');
 const assert = require('assert');
-const fs = require('fs');
 const pathModule = require('path');
 
-const stackContext = require('context');
+// const stackContext = require('context');
 const security = require('security_context');
 const toMatcher = security._toMatcher;
 
@@ -14,6 +13,7 @@ function normalizePath(p) {
   );
 }
 
+// --------------------------------------------------------------------
 // Matcher tests
 assert.strictEqual(
   toMatcher('abc')('abc'),
@@ -112,179 +112,51 @@ assert.strictEqual(
   'Matcher: glob redirect mismatch');
 
 
-// DEBUG REMOVE COMMENT to run tests:
-// make -j2 && ./node test/parallel/test-security-context.js
-function fsSecurityTest(name, setup, fn) {
-  console.log('*** DEBUG starting ' + name);
-  const controllerId = stackContext.getCurrentContext().pushControllers(
-    security.addFileAccessController(setup)
-  );
-  try {
-    fn();
-  } catch (e) {
-    console.log('Failed `' + name + '`: ' + e);
-    console.log(e.stack);
-    throw e;
-  } finally {
-    stackContext.getCurrentContext().popControllers(controllerId);
-    console.log('*** DEBUG stopped ' + name);
-  }
-}
+// --------------------------------------------------------------------
+// addFileAccessController Tests
+const controllerGroup1 = security.addFileAccessController({});
+assert.ok(
+  controllerGroup1,
+  'addFileAccessController did not create a new object');
+assert.ok(
+  controllerGroup1[security.FILE_ACCESS],
+  'addFileAccessController did not create a FILE_ACCESS controller');
+assert.ok(
+  controllerGroup1[security.FILE_ACCESS] instanceof
+    security.FileAccessController,
+  'addFileAccessController did not create a FileAccessController controller');
 
-fsSecurityTest(
-  'file access control wrapper check - readable as object',
-  {},
-  () => {
-    common.expectsError(
-      () => {
-        stackContext.getCurrentContext().pushControllers(
-          security.addFileAccessController({ readable: {} }));
-      },
-      {
-        code: 'ERR_INVALID_ARG_TYPE',
-        type: TypeError,
-        message: 'The "readable" argument must be of type string | ' +
-          'RegExp | array of string or RegExp. Received type object'
-      }
-    );
-  });
-
-fsSecurityTest(
-  'file access control wrapper check - array of object', {},
-  () => {
-    common.expectsError(
-      () => {
-        stackContext.getCurrentContext().pushControllers(
-          security.addFileAccessController({ readable: [{}] }));
-      },
-      {
-        code: 'ERR_INVALID_ARG_TYPE',
-        type: TypeError,
-        message: 'The "readable" argument must be of type string | ' +
-          'RegExp | array of string or RegExp. Received type object'
-      }
-    );
-  });
-
-fsSecurityTest(
-  'fs.open for read: allowed (dir matcher)',
-  { readable: common.tmpDir + '/' },
-  () => {
-    fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
-  });
-
-fsSecurityTest(
-  'fs.open for read: allowed (exact string matcher)',
-  { readable: common.tmpDir + '/a.tmp' },
-  () => {
-    fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
-  });
-
-fsSecurityTest(
-  'fs.open for read: allowed (simple glob matcher)',
-  { readable: common.tmpDir + '/*.tmp' },
-  () => {
-    fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
-    fs.open(common.tmpDir + '/b.tmp', 'r', (err, a) => {});
-  });
-
-fsSecurityTest(
-  'fs.open for read: allowed (sub dir glob matcher)',
-  { readable: common.tmpDir + '/*/a.tmp' },
-  () => {
-    fs.open(common.tmpDir + '/x/a.tmp', 'r', (err, a) => {});
-    fs.open(common.tmpDir + '/y/a.tmp', 'r', (err, a) => {});
-  });
-
-fsSecurityTest(
-  'fs.open for write: allowed',
-  { writable: common.tmpDir + '/' },
-  () => {
-    fs.open(common.tmpDir + '/a.tmp', 'w', (err, a) => {});
-  });
+const controllerGroup2 = { 'a': 2 };
+const controllerGroupRet = security.addFileAccessController(
+  controllerGroup2, {});
+assert.ok(
+  controllerGroupRet,
+  'addFileAccessController did not return an object');
+assert.ok(
+  controllerGroup2[security.FILE_ACCESS],
+  'addFileAccessController did not add FILE_ACCESS');
+assert.ok(
+  controllerGroup2[security.FILE_ACCESS] instanceof
+    security.FileAccessController,
+  'addFileAccessController did not add a FileAccessController controller');
+assert.strictEqual(
+  controllerGroup2.a,
+  2,
+  'addFileAccessController did not maintain the original object values');
+assert.strictEqual(
+  controllerGroupRet.a,
+  2,
+  'addFileAccessController did not return the original object');
 
 
-fsSecurityTest(
-  'fs.open for read: not allowed (no paths allowed)',
-  { readable: [] },
-  () => {
-    common.expectsError(
-      () => {
-        fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
-      },
-      {
-        code: 'ERR_FILE_ACCESS_FORBIDDEN',
-        type: Error,
-        message: new RegExp(
-          'Access to the file ".*?" is forbidden by the current ' +
-          'security context')
-      });
-  });
+// --------------------------------------------------------------------
+// Check the implementation of the security.
 
-fsSecurityTest(
-  'fs.open for read: not allowed (leading path not a dir matcher)',
-  { readable: common.tmpDir },
-  () => {
-    common.expectsError(
-      () => {
-        fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
-      },
-      {
-        code: 'ERR_FILE_ACCESS_FORBIDDEN',
-        type: Error,
-        message: new RegExp(
-          'Access to the file ".*" is forbidden by the current security ' +
-          'context')
-      });
-  });
+// try with undefined options
+new security.FileAccessController();
 
-fsSecurityTest(
-  'fs.open for read: not allowed (string matcher)',
-  { readable: common.tmpDir + '/b.tmp' },
-  () => {
-    common.expectsError(
-      () => {
-        fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
-      },
-      {
-        code: 'ERR_FILE_ACCESS_FORBIDDEN',
-        type: Error,
-        message: new RegExp(
-          'Access to the file ".*" is forbidden by the current security ' +
-          'context')
-      });
-  });
+// try with null options
+new security.FileAccessController(null);
 
-fsSecurityTest(
-  'fs.open for read: not allowed (simple glob matcher)',
-  { readable: common.tmpDir + '/*.tmp' },
-  () => {
-    common.expectsError(
-      () => {
-        fs.open(common.tmpDir + '/a.abc', 'r', (err, a) => {});
-      },
-      {
-        code: 'ERR_FILE_ACCESS_FORBIDDEN',
-        type: Error,
-        message: new RegExp(
-          'Access to the file ".*" is forbidden by the current security ' +
-          'context')
-      });
-  });
-
-fsSecurityTest(
-  'fs.open for write: not allowed',
-  { writable: [] },
-  () => {
-    common.expectsError(
-      () => {
-        fs.open(common.tmpDir + '/a.tmp', 'w', (err, a) => {});
-      },
-      {
-        code: 'ERR_FILE_ACCESS_FORBIDDEN',
-        type: Error,
-        message: new RegExp(
-          'Access to the file ".*" is forbidden by the current security ' +
-          'context')
-      });
-  });
+// try with no options
+new security.FileAccessController({});
