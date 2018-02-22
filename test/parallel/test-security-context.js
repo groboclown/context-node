@@ -13,6 +13,8 @@ function normalizePath(p) {
   );
 }
 
+common.crashOnUnhandledRejection();
+
 // --------------------------------------------------------------------
 // Matcher tests
 assert.strictEqual(

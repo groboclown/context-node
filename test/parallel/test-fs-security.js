@@ -1,5 +1,6 @@
 'use strict';
 const common = require('../common');
+const tmpDir = require('../common/tmpdir').path;
 //const assert = require('assert');
 const fs = require('fs');
 
@@ -25,9 +26,9 @@ function fsSecurityTest(name, setup, fn) {
 
 fsSecurityTest(
   'fs.access: allowed',
-  { listable: [ common.tmpDir ] },
+  { listable: [ tmpDir ] },
   () => {
-    fs.access(common.tmpDir, 0, (err, a) => {});
+    fs.access(tmpDir, 0, (err, a) => {});
   }
 );
 
@@ -44,8 +45,8 @@ fsSecurityTest(
       {
         code: 'ERR_INVALID_ARG_TYPE',
         type: TypeError,
-        message: 'The "readable" argument must be of type string | ' +
-          'RegExp | array of string or RegExp. Received type object'
+        message: 'The "readable" argument must be one of type string, ' +
+          'RegExp, or array of string or RegExp. Received type object'
       }
     );
   }
@@ -62,7 +63,7 @@ fsSecurityTest(
       {
         code: 'ERR_INVALID_ARG_TYPE',
         type: TypeError,
-        message: 'The "readable" argument must be one of type string, ' +
+        message: 'The "readable[0]" argument must be one of type string, ' +
           'RegExp, or array of string or RegExp. Received type object'
       }
     );
@@ -71,43 +72,43 @@ fsSecurityTest(
 
 fsSecurityTest(
   'fs.open for read: allowed (dir matcher)',
-  { readable: common.tmpDir + '/' },
+  { readable: tmpDir + '/' },
   () => {
-    fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
+    fs.open(tmpDir + '/a.tmp', 'r', (err, a) => {});
   }
 );
 
 fsSecurityTest(
   'fs.open for read: allowed (exact string matcher)',
-  { readable: common.tmpDir + '/a.tmp' },
+  { readable: tmpDir + '/a.tmp' },
   () => {
-    fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
+    fs.open(tmpDir + '/a.tmp', 'r', (err, a) => {});
   }
 );
 
 fsSecurityTest(
   'fs.open for read: allowed (simple glob matcher)',
-  { readable: common.tmpDir + '/*.tmp' },
+  { readable: tmpDir + '/*.tmp' },
   () => {
-    fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
-    fs.open(common.tmpDir + '/b.tmp', 'r', (err, a) => {});
+    fs.open(tmpDir + '/a.tmp', 'r', (err, a) => {});
+    fs.open(tmpDir + '/b.tmp', 'r', (err, a) => {});
   }
 );
 
 fsSecurityTest(
   'fs.open for read: allowed (sub dir glob matcher)',
-  { readable: common.tmpDir + '/*/a.tmp' },
+  { readable: tmpDir + '/*/a.tmp' },
   () => {
-    fs.open(common.tmpDir + '/x/a.tmp', 'r', (err, a) => {});
-    fs.open(common.tmpDir + '/y/a.tmp', 'r', (err, a) => {});
+    fs.open(tmpDir + '/x/a.tmp', 'r', (err, a) => {});
+    fs.open(tmpDir + '/y/a.tmp', 'r', (err, a) => {});
   }
 );
 
 fsSecurityTest(
   'fs.open for write: allowed',
-  { writable: common.tmpDir + '/' },
+  { writable: tmpDir + '/' },
   () => {
-    fs.open(common.tmpDir + '/a.tmp', 'w', (err, a) => {});
+    fs.open(tmpDir + '/a.tmp', 'w', (err, a) => {});
   }
 );
 
@@ -117,7 +118,7 @@ fsSecurityTest(
   () => {
     common.expectsError(
       () => {
-        fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
+        fs.open(tmpDir + '/a.tmp', 'r', (err, a) => {});
       },
       {
         code: 'ERR_FILE_ACCESS_FORBIDDEN',
@@ -131,11 +132,11 @@ fsSecurityTest(
 
 fsSecurityTest(
   'fs.open for read: not allowed (leading path not a dir matcher)',
-  { readable: common.tmpDir },
+  { readable: tmpDir },
   () => {
     common.expectsError(
       () => {
-        fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
+        fs.open(tmpDir + '/a.tmp', 'r', (err, a) => {});
       },
       {
         code: 'ERR_FILE_ACCESS_FORBIDDEN',
@@ -149,11 +150,11 @@ fsSecurityTest(
 
 fsSecurityTest(
   'fs.open for read: not allowed (string matcher)',
-  { readable: common.tmpDir + '/b.tmp' },
+  { readable: tmpDir + '/b.tmp' },
   () => {
     common.expectsError(
       () => {
-        fs.open(common.tmpDir + '/a.tmp', 'r', (err, a) => {});
+        fs.open(tmpDir + '/a.tmp', 'r', (err, a) => {});
       },
       {
         code: 'ERR_FILE_ACCESS_FORBIDDEN',
@@ -167,11 +168,11 @@ fsSecurityTest(
 
 fsSecurityTest(
   'fs.open for read: not allowed (simple glob matcher)',
-  { readable: common.tmpDir + '/*.tmp' },
+  { readable: tmpDir + '/*.tmp' },
   () => {
     common.expectsError(
       () => {
-        fs.open(common.tmpDir + '/a.abc', 'r', (err, a) => {});
+        fs.open(tmpDir + '/a.abc', 'r', (err, a) => {});
       },
       {
         code: 'ERR_FILE_ACCESS_FORBIDDEN',
@@ -189,7 +190,7 @@ fsSecurityTest(
   () => {
     common.expectsError(
       () => {
-        fs.open(common.tmpDir + '/a.tmp', 'w', (err, a) => {});
+        fs.open(tmpDir + '/a.tmp', 'w', (err, a) => {});
       },
       {
         code: 'ERR_FILE_ACCESS_FORBIDDEN',
