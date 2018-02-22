@@ -170,6 +170,7 @@ struct PackageConfig {
   V(fd_string, "fd")                                                          \
   V(file_string, "file")                                                      \
   V(fingerprint_string, "fingerprint")                                        \
+  V(fingerprint256_string, "fingerprint256")                                  \
   V(flags_string, "flags")                                                    \
   V(get_data_clone_error_string, "_getDataCloneError")                        \
   V(get_shared_array_buffer_id_string, "_getSharedArrayBufferId")             \
@@ -241,6 +242,7 @@ struct PackageConfig {
   V(priority_string, "priority")                                              \
   V(produce_cached_data_string, "produceCachedData")                          \
   V(promise_string, "promise")                                                \
+  V(pubkey_string, "pubkey")                                                  \
   V(raw_string, "raw")                                                        \
   V(read_host_object_string, "_readHostObject")                               \
   V(readable_string, "readable")                                              \
@@ -847,7 +849,7 @@ class Environment {
   struct NativeImmediateCallback {
     native_immediate_callback cb_;
     void* data_;
-    std::unique_ptr<v8::Persistent<v8::Object>> keep_alive_;
+    std::unique_ptr<Persistent<v8::Object>> keep_alive_;
     bool refed_;
   };
   std::vector<NativeImmediateCallback> native_immediate_callbacks_;
@@ -858,8 +860,7 @@ class Environment {
                              v8::Local<v8::Promise> promise,
                              v8::Local<v8::Value> parent);
 
-#define V(PropertyName, TypeName)                                             \
-  v8::Persistent<TypeName> PropertyName ## _;
+#define V(PropertyName, TypeName) Persistent<TypeName> PropertyName ## _;
   ENVIRONMENT_STRONG_PERSISTENT_PROPERTIES(V)
 #undef V
 

@@ -27,9 +27,7 @@
 #include "v8.h"
 #include "v8-profiler.h"
 
-using v8::Array;
 using v8::Context;
-using v8::Float64Array;
 using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
@@ -47,7 +45,6 @@ using v8::PromiseHookType;
 using v8::PropertyCallbackInfo;
 using v8::RetainedObjectInfo;
 using v8::String;
-using v8::TryCatch;
 using v8::Undefined;
 using v8::Value;
 
@@ -127,7 +124,7 @@ RetainedObjectInfo* WrapperInfo(uint16_t class_id, Local<Value> wrapper) {
   CHECK_GT(object->InternalFieldCount(), 0);
 
   AsyncWrap* wrap = Unwrap<AsyncWrap>(object);
-  CHECK_NE(nullptr, wrap);
+  if (wrap == nullptr) return nullptr;  // ClearWrap() already called.
 
   return new RetainedAsyncInfo(class_id, wrap);
 }
@@ -409,8 +406,8 @@ static void DisablePromiseHook(const FunctionCallbackInfo<Value>& args) {
 class DestroyParam {
  public:
   double asyncId;
-  v8::Persistent<Object> target;
-  v8::Persistent<Object> propBag;
+  Persistent<Object> target;
+  Persistent<Object> propBag;
 };
 
 
@@ -425,8 +422,6 @@ void AsyncWrap::WeakCallback(const v8::WeakCallbackInfo<DestroyParam>& info) {
   if (val->IsFalse()) {
     AsyncWrap::EmitDestroy(env, p->asyncId);
   }
-  p->target.Reset();
-  p->propBag.Reset();
   delete p;
 }
 

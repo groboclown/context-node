@@ -19,7 +19,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-/* eslint-disable required-modules, crypto-check */
+/* eslint-disable node-core/required-modules, node-core/crypto-check */
 'use strict';
 const process = global.process;  // Some tests tamper with the process global.
 const path = require('path');
@@ -494,6 +494,14 @@ exports.fileExists = function(pathname) {
   }
 };
 
+exports.skipIfEslintMissing = function() {
+  if (!exports.fileExists(
+    path.join('..', '..', 'tools', 'node_modules', 'eslint')
+  )) {
+    exports.skip('missing ESLint');
+  }
+};
+
 exports.canCreateSymLink = function() {
   // On Windows, creating symlinks requires admin privileges.
   // We'll only try to run symlink test if we have enough privileges.
@@ -767,6 +775,23 @@ exports.crashOnUnhandledRejection = function() {
              (err) => process.nextTick(() => { throw err; }));
 };
 
+exports.getTTYfd = function getTTYfd() {
+  // Do our best to grab a tty fd.
+  const tty = require('tty');
+  // Don't attempt fd 0 as it is not writable on Windows.
+  // Ref: ef2861961c3d9e9ed6972e1e84d969683b25cf95
+  const ttyFd = [1, 2, 4, 5].find(tty.isatty);
+  if (ttyFd === undefined) {
+    try {
+      return fs.openSync('/dev/tty');
+    } catch (e) {
+      // There aren't any tty fd's available to use.
+      return -1;
+    }
+  }
+  return ttyFd;
+};
+
 // Hijack stdout and stderr
 const stdWrite = {};
 function hijackStdWritable(name, listener) {
@@ -791,7 +816,25 @@ function restoreWritable(name) {
   delete process[name].writeTimes;
 }
 
+exports.runWithInvalidFD = function(func) {
+  let fd = 1 << 30;
+  // Get first known bad file descriptor. 1 << 30 is usually unlikely to
+  // be an valid one.
+  try {
+    while (fs.fstatSync(fd--) && fd > 0);
+  } catch (e) {
+    return func(fd);
+  }
+
+  exports.printSkipMessage('Could not generate an invalid fd');
+};
+
 exports.hijackStdout = hijackStdWritable.bind(null, 'stdout');
 exports.hijackStderr = hijackStdWritable.bind(null, 'stderr');
 exports.restoreStdout = restoreWritable.bind(null, 'stdout');
 exports.restoreStderr = restoreWritable.bind(null, 'stderr');
+exports.isCPPSymbolsNotMapped = exports.isWindows ||
+                                exports.isSunOS ||
+                                exports.isAIX ||
+                                exports.isLinuxPPCBE ||
+                                exports.isFreeBSD;

@@ -132,7 +132,6 @@ FileHandle::~FileHandle() {
   CHECK(!closing_);  // We should not be deleting while explicitly closing!
   Close();           // Close synchronously and emit warning
   CHECK(closed_);    // We have to be closed at the point
-  CHECK(persistent().IsEmpty());
 }
 
 
@@ -283,7 +282,8 @@ void FSReqWrap::SetReturnValue(const FunctionCallbackInfo<Value>& args) {
 void FSReqPromise::SetReturnValue(const FunctionCallbackInfo<Value>& args) {
   Local<Context> context = env()->context();
   args.GetReturnValue().Set(
-    object()->Get(context, env()->promise_string()).ToLocalChecked());
+    object()->Get(context, env()->promise_string()).ToLocalChecked()
+      .As<Promise::Resolver>()->GetPromise());
 }
 
 void NewFSReqWrap(const FunctionCallbackInfo<Value>& args) {
@@ -300,7 +300,7 @@ FSReqPromise::FSReqPromise(Environment* env)
       stats_field_array_(env->isolate(), 14) {
   auto resolver = Promise::Resolver::New(env->context()).ToLocalChecked();
   object()->Set(env->context(), env->promise_string(),
-                resolver.As<Promise>()).FromJust();
+                resolver).FromJust();
 }
 
 FSReqPromise::~FSReqPromise() {
@@ -315,9 +315,7 @@ void FSReqPromise::Reject(Local<Value> reject) {
   Local<Value> value =
       object()->Get(env()->context(),
                     env()->promise_string()).ToLocalChecked();
-  CHECK(value->IsPromise());
-  Local<Promise> promise = value.As<Promise>();
-  Local<Promise::Resolver> resolver = promise.As<Promise::Resolver>();
+  Local<Promise::Resolver> resolver = value.As<Promise::Resolver>();
   resolver->Reject(env()->context(), reject).FromJust();
 }
 
@@ -336,7 +334,6 @@ void FSReqPromise::Resolve(Local<Value> value) {
   Local<Value> val =
       object()->Get(env()->context(),
                     env()->promise_string()).ToLocalChecked();
-  CHECK(val->IsPromise());
   Local<Promise::Resolver> resolver = val.As<Promise::Resolver>();
   resolver->Resolve(env()->context(), value).FromJust();
 }
@@ -518,6 +515,7 @@ class fs_req_wrap {
   DISALLOW_COPY_AND_ASSIGN(fs_req_wrap);
 };
 
+// Returns nullptr if the operation fails from the start.
 template <typename Func, typename... Args>
 inline FSReqBase* AsyncDestCall(Environment* env,
     FSReqBase* req_wrap,
@@ -532,16 +530,16 @@ inline FSReqBase* AsyncDestCall(Environment* env,
     uv_fs_t* uv_req = req_wrap->req();
     uv_req->result = err;
     uv_req->path = nullptr;
-    after(uv_req);
+    after(uv_req);  // after may delete req_wrap if there is an error
     req_wrap = nullptr;
+  } else {
+    req_wrap->SetReturnValue(args);
   }
 
-  if (req_wrap != nullptr) {
-    args.GetReturnValue().Set(req_wrap->persistent());
-  }
   return req_wrap;
 }
 
+// Returns nullptr if the operation fails from the start.
 template <typename Func, typename... Args>
 inline FSReqBase* AsyncCall(Environment* env,
     FSReqBase* req_wrap,
@@ -620,7 +618,6 @@ void Access(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {  // access(path, mode, req)
     AsyncCall(env, req_wrap, args, "access", UTF8, AfterNoArgs,
               uv_fs_access, *path, mode);
-    req_wrap->SetReturnValue(args);
   } else {  // access(path, mode, undefined, ctx)
     CHECK_EQ(argc, 4);
     fs_req_wrap req_wrap;
@@ -642,7 +639,6 @@ void Close(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {  // close(fd, req)
     AsyncCall(env, req_wrap, args, "close", UTF8, AfterNoArgs,
               uv_fs_close, fd);
-    req_wrap->SetReturnValue(args);
   } else {  // close(fd, undefined, ctx)
     CHECK_EQ(argc, 3);
     fs_req_wrap req_wrap;
@@ -751,7 +747,6 @@ static void Stat(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {  // stat(path, req)
     AsyncCall(env, req_wrap, args, "stat", UTF8, AfterStat,
               uv_fs_stat, *path);
-    req_wrap->SetReturnValue(args);
   } else {  // stat(path, undefined, ctx)
     CHECK_EQ(argc, 3);
     fs_req_wrap req_wrap;
@@ -776,7 +771,6 @@ static void LStat(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {  // lstat(path, req)
     AsyncCall(env, req_wrap, args, "lstat", UTF8, AfterStat,
               uv_fs_lstat, *path);
-    req_wrap->SetReturnValue(args);
   } else {  // lstat(path, undefined, ctx)
     CHECK_EQ(argc, 3);
     fs_req_wrap req_wrap;
@@ -801,7 +795,6 @@ static void FStat(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {  // fstat(fd, req)
     AsyncCall(env, req_wrap, args, "fstat", UTF8, AfterStat,
               uv_fs_fstat, fd);
-    req_wrap->SetReturnValue(args);
   } else {  // fstat(fd, undefined, ctx)
     CHECK_EQ(argc, 3);
     fs_req_wrap req_wrap;
@@ -855,7 +848,6 @@ static void Link(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {  // link(src, dest, req)
     AsyncDestCall(env, req_wrap, args, "link", *dest, dest.length(), UTF8,
                   AfterNoArgs, uv_fs_link, *src, *dest);
-    req_wrap->SetReturnValue(args);
   } else {  // link(src, dest)
     CHECK_EQ(argc, 4);
     fs_req_wrap req;
@@ -879,7 +871,6 @@ static void ReadLink(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {  // readlink(path, encoding, req)
     AsyncCall(env, req_wrap, args, "readlink", encoding, AfterStringPtr,
               uv_fs_readlink, *path);
-    req_wrap->SetReturnValue(args);
   } else {
     CHECK_EQ(argc, 4);
     fs_req_wrap req;
@@ -920,7 +911,6 @@ static void Rename(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncDestCall(env, req_wrap, args, "rename", *new_path, new_path.length(),
                   UTF8, AfterNoArgs, uv_fs_rename, *old_path, *new_path);
-    req_wrap->SetReturnValue(args);
   } else {
     CHECK_EQ(argc, 4);
     fs_req_wrap req;
@@ -944,7 +934,6 @@ static void FTruncate(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "ftruncate", UTF8, AfterNoArgs,
               uv_fs_ftruncate, fd, len);
-    req_wrap->SetReturnValue(args);
   } else {
     CHECK_EQ(argc, 4);
     fs_req_wrap req;
@@ -965,7 +954,6 @@ static void Fdatasync(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "fdatasync", UTF8, AfterNoArgs,
               uv_fs_fdatasync, fd);
-    req_wrap->SetReturnValue(args);
   } else {
     CHECK_EQ(argc, 3);
     fs_req_wrap req;
@@ -986,7 +974,6 @@ static void Fsync(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "fsync", UTF8, AfterNoArgs,
               uv_fs_fsync, fd);
-    req_wrap->SetReturnValue(args);
   } else {
     CHECK_EQ(argc, 3);
     fs_req_wrap req;
@@ -1007,7 +994,6 @@ static void Unlink(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "unlink", UTF8, AfterNoArgs,
               uv_fs_unlink, *path);
-    req_wrap->SetReturnValue(args);
   } else {
     CHECK_EQ(argc, 3);
     fs_req_wrap req;
@@ -1027,7 +1013,6 @@ static void RMDir(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "rmdir", UTF8, AfterNoArgs,
               uv_fs_rmdir, *path);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(rmdir, *path, *path)
   }
@@ -1048,7 +1033,6 @@ static void MKDir(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "mkdir", UTF8, AfterNoArgs,
               uv_fs_mkdir, *path, mode);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(mkdir, *path, *path, mode)
   }
@@ -1066,7 +1050,6 @@ static void RealPath(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "realpath", encoding, AfterStringPtr,
               uv_fs_realpath, *path);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(realpath, *path, *path);
     const char* link_path = static_cast<const char*>(SYNC_REQ.ptr);
@@ -1098,7 +1081,6 @@ static void ReadDir(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "scandir", encoding, AfterScanDir,
               uv_fs_scandir, *path, 0 /*flags*/);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(scandir, *path, *path, 0 /*flags*/)
 
@@ -1169,7 +1151,6 @@ static void Open(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "open", UTF8, AfterInteger,
               uv_fs_open, *path, flags, mode);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(open, *path, *path, flags, mode)
     args.GetReturnValue().Set(SYNC_RESULT);
@@ -1194,7 +1175,6 @@ static void OpenFileHandle(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "open", UTF8, AfterOpenFileHandle,
               uv_fs_open, *path, flags, mode);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(open, *path, *path, flags, mode)
     HandleScope scope(env->isolate());
@@ -1219,7 +1199,6 @@ static void CopyFile(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "copyfile", UTF8, AfterNoArgs,
               uv_fs_copyfile, *src, *dest, flags);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_DEST_CALL(copyfile, *src, *dest, *src, *dest, flags)
   }
@@ -1262,7 +1241,7 @@ static void WriteBuffer(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "write", UTF8, AfterInteger,
               uv_fs_write, fd, &uvbuf, 1, pos);
-    return req_wrap->SetReturnValue(args);
+    return;
   }
 
   SYNC_CALL(write, nullptr, fd, &uvbuf, 1, pos)
@@ -1299,7 +1278,7 @@ static void WriteBuffers(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "write", UTF8, AfterInteger,
               uv_fs_write, fd, *iovs, iovs.length(), pos);
-    return req_wrap->SetReturnValue(args);
+    return;
   }
 
   SYNC_CALL(write, nullptr, fd, *iovs, iovs.length(), pos)
@@ -1367,7 +1346,6 @@ static void WriteString(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "write", UTF8, AfterInteger,
               uv_fs_write, fd, &uvbuf, 1, pos);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(write, nullptr, fd, &uvbuf, 1, pos)
     return args.GetReturnValue().Set(SYNC_RESULT);
@@ -1422,7 +1400,6 @@ static void Read(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "read", UTF8, AfterInteger,
               uv_fs_read, fd, &uvbuf, 1, pos);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(read, 0, fd, &uvbuf, 1, pos)
     args.GetReturnValue().Set(SYNC_RESULT);
@@ -1448,7 +1425,6 @@ static void Chmod(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "chmod", UTF8, AfterNoArgs,
               uv_fs_chmod, *path, mode);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(chmod, *path, *path, mode);
   }
@@ -1471,7 +1447,6 @@ static void FChmod(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "fchmod", UTF8, AfterNoArgs,
               uv_fs_fchmod, fd, mode);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(fchmod, 0, fd, mode);
   }
@@ -1499,7 +1474,6 @@ static void Chown(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "chown", UTF8, AfterNoArgs,
               uv_fs_chown, *path, uid, gid);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(chown, *path, *path, uid, gid);
   }
@@ -1524,7 +1498,6 @@ static void FChown(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "fchown", UTF8, AfterNoArgs,
               uv_fs_fchown, fd, uid, gid);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(fchown, 0, fd, uid, gid);
   }
@@ -1548,7 +1521,6 @@ static void UTimes(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "utime", UTF8, AfterNoArgs,
               uv_fs_utime, *path, atime, mtime);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(utime, *path, *path, atime, mtime);
   }
@@ -1569,7 +1541,6 @@ static void FUTimes(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "futime", UTF8, AfterNoArgs,
               uv_fs_futime, fd, atime, mtime);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(futime, 0, fd, atime, mtime);
   }
@@ -1589,7 +1560,6 @@ static void Mkdtemp(const FunctionCallbackInfo<Value>& args) {
   if (req_wrap != nullptr) {
     AsyncCall(env, req_wrap, args, "mkdtemp", encoding, AfterStringPath,
               uv_fs_mkdtemp, *tmpl);
-    req_wrap->SetReturnValue(args);
   } else {
     SYNC_CALL(mkdtemp, *tmpl, *tmpl);
     const char* path = static_cast<const char*>(SYNC_REQ.path);

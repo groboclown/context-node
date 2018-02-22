@@ -1257,10 +1257,10 @@ automatically.
 const http2 = require('http2');
 const fs = require('fs');
 
-const fd = fs.openSync('/some/file', 'r');
-
 const server = http2.createServer();
 server.on('stream', (stream) => {
+  const fd = fs.openSync('/some/file', 'r');
+
   const stat = fs.fstatSync(fd);
   const headers = {
     'content-length': stat.size,
@@ -1268,8 +1268,8 @@ server.on('stream', (stream) => {
     'content-type': 'text/plain'
   };
   stream.respondWithFD(fd, headers);
+  stream.on('close', () => fs.closeSync(fd));
 });
-server.on('close', () => fs.closeSync(fd));
 ```
 
 The optional `options.statCheck` function may be specified to give user code
@@ -1282,6 +1282,12 @@ The `offset` and `length` options may be used to limit the response to a
 specific range subset. This can be used, for instance, to support HTTP Range
 requests.
 
+The file descriptor is not closed when the stream is closed, so it will need
+to be closed manually once it is no longer needed.
+Note that using the same file descriptor concurrently for multiple streams
+is not supported and may result in data loss. Re-using a file descriptor
+after a stream has finished is supported.
+
 When set, the `options.getTrailers()` function is called immediately after
 queuing the last chunk of payload data to be sent. The callback is passed a
 single object (with a `null` prototype) that the listener may use to specify
@@ -1291,10 +1297,10 @@ the trailing header fields to send to the peer.
 const http2 = require('http2');
 const fs = require('fs');
 
-const fd = fs.openSync('/some/file', 'r');
-
 const server = http2.createServer();
 server.on('stream', (stream) => {
+  const fd = fs.openSync('/some/file', 'r');
+
   const stat = fs.fstatSync(fd);
   const headers = {
     'content-length': stat.size,
@@ -1306,8 +1312,9 @@ server.on('stream', (stream) => {
       trailers.ABC = 'some value to send';
     }
   });
+
+  stream.on('close', () => fs.closeSync(fd));
 });
-server.on('close', () => fs.closeSync(fd));
 ```
 
 The HTTP/1 specification forbids trailers from containing HTTP/2 pseudo-header
@@ -1648,7 +1655,7 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/16676
     description: Added the `maxHeaderListPairs` option with a default limit of
                  128 header pairs.
-  - version: REPLACEME
+  - version: v9.6.0
     pr-url: https://github.com/nodejs/node/pull/15752
     description: Added the `Http1IncomingMessage` and `Http1ServerResponse`
                  option.
@@ -1711,7 +1718,7 @@ changes:
     Http2ServerRequest class to use.
     Useful for extending the original `Http2ServerRequest`.
     **Default:** `Http2ServerRequest`
-  * `Http2ServerResponse` {htt2.Http2ServerResponse} Specifies the
+  * `Http2ServerResponse` {http2.Http2ServerResponse} Specifies the
     Http2ServerResponse class to use.
     Useful for extending the original `Http2ServerResponse`.
     **Default:** `Http2ServerResponse`
@@ -2617,11 +2624,16 @@ See [`response.socket`][].
 #### response.end([data][, encoding][, callback])
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/18780
+    description: This method now returns a reference to `ServerResponse`.
 -->
 
 * `data` {string|Buffer}
 * `encoding` {string}
 * `callback` {Function}
+* Returns: {this}
 
 This method signals to the server that all of the response headers and body
 have been sent; that server should consider this message complete.

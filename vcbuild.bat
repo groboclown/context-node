@@ -1,4 +1,4 @@
-@echo off
+@if not defined DEBUG_HELPER @ECHO OFF
 
 cd %~dp0
 
@@ -166,7 +166,7 @@ if "%target%"=="Clean" rmdir /S /Q %~dp0deps\icu
 :no-depsicu
 
 call tools\msvs\find_python.cmd
-if errorlevel 1 echo Could not find python2 & goto :exit
+if errorlevel 1 goto :exit
 
 call :getnodeversion || exit /b 1
 
@@ -514,7 +514,7 @@ if defined lint_js_ci goto lint-js-ci
 if not defined lint_js goto exit
 if not exist tools\node_modules\eslint goto no-lint
 echo running lint-js
-%config%\node tools\node_modules\eslint\bin\eslint.js --cache --rule "linebreak-style: 0" --rulesdir=tools\eslint-rules --ext=.js,.mjs,.md benchmark doc lib test tools
+%config%\node tools\node_modules\eslint\bin\eslint.js --cache --rule "linebreak-style: 0" --ext=.js,.mjs,.md benchmark doc lib test tools
 goto exit
 
 :lint-js-ci

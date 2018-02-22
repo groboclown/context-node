@@ -355,6 +355,9 @@ See also: [`writable.uncork()`][].
 <!-- YAML
 added: v0.9.4
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/18780
+    description: This method now returns a reference to `writable`.
   - version: v8.0.0
     pr-url: https://github.com/nodejs/node/pull/11608
     description: The `chunk` argument can now be a `Uint8Array` instance.
@@ -366,6 +369,7 @@ changes:
   other than `null`.
 * `encoding` {string} The encoding, if `chunk` is a string
 * `callback` {Function} Optional callback for when the stream is finished
+* Returns: {this}
 
 Calling the `writable.end()` method signals that no more data will be written
 to the [Writable][]. The optional `chunk` and `encoding` arguments allow one
@@ -378,6 +382,7 @@ Calling the [`stream.write()`][stream-write] method after calling
 
 ```js
 // write 'hello, ' and then end with 'world!'
+const fs = require('fs');
 const file = fs.createWriteStream('example.txt');
 file.write('hello, ');
 file.end('world!');
@@ -861,6 +866,7 @@ The following example pipes all of the data from the `readable` into a file
 named `file.txt`:
 
 ```js
+const fs = require('fs');
 const readable = getReadableStreamSomehow();
 const writable = fs.createWriteStream('file.txt');
 // All the data from readable goes into 'file.txt'
@@ -872,6 +878,7 @@ The `readable.pipe()` method returns a reference to the *destination* stream
 making it possible to set up chains of piped streams:
 
 ```js
+const fs = require('fs');
 const r = fs.createReadStream('file.txt');
 const z = zlib.createGzip();
 const w = fs.createWriteStream('file.txt.gz');
@@ -1036,6 +1043,7 @@ If the `destination` is specified, but no pipe is set up for it, then
 the method does nothing.
 
 ```js
+const fs = require('fs');
 const readable = getReadableStreamSomehow();
 const writable = fs.createWriteStream('file.txt');
 // All the data from readable goes into 'file.txt',
@@ -1173,6 +1181,8 @@ added: REPLACEME
 Returns an [AsyncIterator][async-iterator] to fully consume the stream.
 
 ```js
+const fs = require('fs');
+
 async function print(readable) {
   readable.setEncoding('utf8');
   let data = '';
@@ -1842,7 +1852,7 @@ class Counter extends Readable {
     if (i > this._max)
       this.push(null);
     else {
-      const str = '' + i;
+      const str = String(i);
       const buf = Buffer.from(str, 'ascii');
       this.push(buf);
     }
