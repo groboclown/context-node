@@ -12,6 +12,7 @@ This directory contains modules used to test the Node.js implementation.
 * [Fixtures module](#fixtures-module)
 * [HTTP2 module](#http2-module)
 * [Internet module](#internet-module)
+* [tmpdir module](#tmpdir-module)
 * [WPT module](#wpt-module)
 
 ## Benchmark Module
@@ -332,11 +333,6 @@ A port number for tests to use if one is needed.
 
 Logs '1..0 # Skipped: ' + `msg`
 
-### refreshTmpDir()
-* return [&lt;String>]
-
-Deletes the testing 'tmp' directory and recreates it.
-
 ### restoreStderr()
 
 Restore the original `process.stderr.write`. Used to restore `stderr` to its
@@ -379,17 +375,12 @@ Platform normalizes the `pwd` command.
 
 Synchronous version of `spawnPwd`.
 
-### tmpDir
-* [&lt;String>]
-
-The realpath of the 'tmp' directory.
-
 ## Countdown Module
 
 The `Countdown` module provides a simple countdown mechanism for tests that
 require a particular action to be taken after a given number of completed
 tasks (for instance, shutting down an HTTP server after a specific number of
-requests).
+requests). The Countdown will fail the test if the remainder did not reach 0.
 
 <!-- eslint-disable strict, required-modules -->
 ```js
@@ -664,6 +655,19 @@ A set of addresses for internet-related tests. All properties are configurable
 via `NODE_TEST_*` environment variables. For example, to configure
 `internet.addresses.INET_HOST`, set the environment
 variable `NODE_TEST_INET_HOST` to a specified host.
+
+## tmpdir Module
+
+The `tmpdir` module supports the use of a temporary directory for testing.
+
+### path
+* [&lt;String>]
+
+The realpath of the testing temporary directory.
+
+### refresh()
+
+Deletes and recreates the testing temporary directory.
 
 ## WPT Module
 

@@ -172,6 +172,7 @@ inline bool Environment::AsyncHooks::pop_async_id(double async_id) {
   return fields_[kStackLength] > 0;
 }
 
+// Keep in sync with clearAsyncIdStack in lib/internal/async_hooks.js.
 inline void Environment::AsyncHooks::clear_async_id_stack() {
   async_id_fields_[kExecutionAsyncId] = 0;
   async_id_fields_[kTriggerAsyncId] = 0;
@@ -264,12 +265,20 @@ inline bool Environment::TickInfo::has_scheduled() const {
   return fields_[kHasScheduled] == 1;
 }
 
+inline bool Environment::TickInfo::has_thrown() const {
+  return fields_[kHasThrown] == 1;
+}
+
 inline bool Environment::TickInfo::has_promise_rejections() const {
   return fields_[kHasPromiseRejections] == 1;
 }
 
 inline void Environment::TickInfo::promise_rejections_toggle_on() {
   fields_[kHasPromiseRejections] = 1;
+}
+
+inline void Environment::TickInfo::set_has_thrown(bool state) {
+  fields_[kHasThrown] = state ? 1 : 0;
 }
 
 inline void Environment::AssignToContext(v8::Local<v8::Context> context,
@@ -301,6 +310,10 @@ inline Environment* Environment::GetCurrent(
   CHECK(info.Data()->IsExternal());
   return static_cast<Environment*>(
       info.Data().template As<v8::External>()->Value());
+}
+
+inline Environment* Environment::GetThreadLocalEnv() {
+  return static_cast<Environment*>(uv_key_get(&thread_local_env));
 }
 
 inline Environment::Environment(IsolateData* isolate_data,

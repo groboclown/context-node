@@ -33,6 +33,7 @@
 #include "req_wrap.h"
 #include "util.h"
 #include "uv.h"
+#include "v8-profiler.h"
 #include "v8.h"
 #include "node.h"
 #include "node_http2_state.h"
@@ -53,7 +54,26 @@ class performance_state;
 
 namespace loader {
 class ModuleWrap;
-}
+
+struct Exists {
+  enum Bool { Yes, No };
+};
+
+struct IsValid {
+  enum Bool { Yes, No };
+};
+
+struct HasMain {
+  enum Bool { Yes, No };
+};
+
+struct PackageConfig {
+  const Exists::Bool exists;
+  const IsValid::Bool is_valid;
+  const HasMain::Bool has_main;
+  const std::string main;
+};
+}  // namespace loader
 
 // Pick an index that's hopefully out of the way when we're embedded inside
 // another application. Performance-wise or memory-wise it doesn't matter:
@@ -91,6 +111,8 @@ class ModuleWrap;
   V(decorated_private_symbol, "node:decorated")                               \
   V(npn_buffer_private_symbol, "node:npnBuffer")                              \
   V(selected_npn_buffer_private_symbol, "node:selectedNpnBuffer")             \
+  V(napi_env, "node:napi:env")                                                \
+  V(napi_wrapper, "node:napi:wrapper")                                        \
 
 // Strings are per-isolate primitives but Environment proxies them
 // for the sake of convenience.  Strings should be ASCII-only.
@@ -210,6 +232,7 @@ class ModuleWrap;
   V(owner_string, "owner")                                                    \
   V(parse_error_string, "Parse Error")                                        \
   V(path_string, "path")                                                      \
+  V(pending_handle_string, "pendingHandle")                                   \
   V(pbkdf2_error_string, "PBKDF2 Error")                                      \
   V(pid_string, "pid")                                                        \
   V(pipe_string, "pipe")                                                      \
@@ -217,6 +240,7 @@ class ModuleWrap;
   V(preference_string, "preference")                                          \
   V(priority_string, "priority")                                              \
   V(produce_cached_data_string, "produceCachedData")                          \
+  V(promise_string, "promise")                                                \
   V(raw_string, "raw")                                                        \
   V(read_host_object_string, "_readHostObject")                               \
   V(readable_string, "readable")                                              \
@@ -249,6 +273,7 @@ class ModuleWrap;
   V(type_string, "type")                                                      \
   V(uid_string, "uid")                                                        \
   V(unknown_string, "<unknown>")                                              \
+  V(url_string, "url")                                                        \
   V(user_string, "user")                                                      \
   V(username_string, "username")                                              \
   V(valid_from_string, "valid_from")                                          \
@@ -277,7 +302,11 @@ class ModuleWrap;
   V(buffer_prototype_object, v8::Object)                                      \
   V(context, v8::Context)                                                     \
   V(domain_callback, v8::Function)                                            \
+  V(fd_constructor_template, v8::ObjectTemplate)                              \
+  V(fsreqpromise_constructor_template, v8::ObjectTemplate)                    \
+  V(fdclose_constructor_template, v8::ObjectTemplate)                         \
   V(host_import_module_dynamically_callback, v8::Function)                    \
+  V(host_initialize_import_meta_object_callback, v8::Function)                \
   V(http2ping_constructor_template, v8::ObjectTemplate)                       \
   V(http2stream_constructor_template, v8::ObjectTemplate)                     \
   V(http2settings_constructor_template, v8::ObjectTemplate)                   \
@@ -296,14 +325,17 @@ class ModuleWrap;
   V(script_context_constructor_template, v8::FunctionTemplate)                \
   V(script_data_constructor_function, v8::Function)                           \
   V(secure_context_constructor_template, v8::FunctionTemplate)                \
+  V(shutdown_wrap_constructor_function, v8::Function)                         \
   V(tcp_constructor_template, v8::FunctionTemplate)                           \
   V(tick_callback_function, v8::Function)                                     \
+  V(timers_callback_function, v8::Function)                                   \
   V(tls_wrap_constructor_function, v8::Function)                              \
   V(tty_constructor_template, v8::FunctionTemplate)                           \
   V(udp_constructor_function, v8::Function)                                   \
   V(vm_parsing_context_symbol, v8::Symbol)                                    \
   V(url_constructor_function, v8::Function)                                   \
   V(write_wrap_constructor_function, v8::Function)                            \
+  V(fs_use_promises_symbol, v8::Symbol)
 
 class Environment;
 
@@ -330,6 +362,8 @@ class IsolateData {
   std::unordered_map<nghttp2_rcbuf*, v8::Eternal<v8::String>> http2_static_strs;
   inline v8::Isolate* isolate() const;
 
+  v8::CpuProfiler* GetCpuProfiler();
+
  private:
 #define VP(PropertyName, StringValue) V(v8::Private, PropertyName)
 #define VS(PropertyName, StringValue) V(v8::String, PropertyName)
@@ -345,6 +379,7 @@ class IsolateData {
   uv_loop_t* const event_loop_;
   uint32_t* const zero_fill_field_;
   MultiIsolatePlatform* platform_;
+  v8::CpuProfiler* cpu_profiler_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(IsolateData);
 };
@@ -479,8 +514,10 @@ class Environment {
     inline AliasedBuffer<uint8_t, v8::Uint8Array>& fields();
     inline bool has_scheduled() const;
     inline bool has_promise_rejections() const;
+    inline bool has_thrown() const;
 
     inline void promise_rejections_toggle_on();
+    inline void set_has_thrown(bool state);
 
    private:
     friend class Environment;  // So we can call the constructor.
@@ -489,6 +526,7 @@ class Environment {
     enum Fields {
       kHasScheduled,
       kHasPromiseRejections,
+      kHasThrown,
       kFieldsCount
     };
 
@@ -525,6 +563,9 @@ class Environment {
   template <typename T>
   static inline Environment* GetCurrent(
       const v8::PropertyCallbackInfo<T>& info);
+
+  static uv_key_t thread_local_env;
+  static inline Environment* GetThreadLocalEnv();
 
   inline Environment(IsolateData* isolate_data, v8::Local<v8::Context> context);
   inline ~Environment();
@@ -589,6 +630,8 @@ class Environment {
   inline std::vector<double>* destroy_async_id_list();
 
   std::unordered_multimap<int, loader::ModuleWrap*> module_map;
+
+  std::unordered_map<std::string, loader::PackageConfig> package_json_cache;
 
   inline double* heap_statistics_buffer() const;
   inline void set_heap_statistics_buffer(double* pointer);
@@ -718,6 +761,8 @@ class Environment {
 
   static inline Environment* ForAsyncHooks(AsyncHooks* hooks);
 
+  v8::Local<v8::Value> GetNow();
+
  private:
   inline void CreateImmediate(native_immediate_callback cb,
                               void* data,
@@ -762,6 +807,7 @@ class Environment {
   // symbols for Environment, which assumes that the position of members in
   // memory are predictable. For more information please refer to
   // `doc/guides/node-postmortem-support.md`
+  friend int GenDebugSymbols();
   HandleWrapQueue handle_wrap_queue_;
   ReqWrapQueue req_wrap_queue_;
   ListHead<HandleCleanup,

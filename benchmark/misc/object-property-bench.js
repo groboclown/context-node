@@ -1,5 +1,7 @@
 'use strict';
 
+/* eslint-disable dot-notation */
+
 const common = require('../common.js');
 
 const bench = common.createBenchmark(main, {
@@ -78,6 +80,6 @@ function main({ millions, method }) {
       runSymbol(n);
       break;
     default:
-      throw new Error('Unexpected method');
+      throw new Error(`Unexpected method "${method}"`);
   }
 }

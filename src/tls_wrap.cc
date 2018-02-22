@@ -59,7 +59,6 @@ TLSWrap::TLSWrap(Environment* env,
       SSLWrap<TLSWrap>(env, sc, kind),
       StreamBase(env),
       sc_(sc),
-      stream_(stream),
       enc_in_(nullptr),
       enc_out_(nullptr),
       write_size_(0),
@@ -78,14 +77,7 @@ TLSWrap::TLSWrap(Environment* env,
   SSL_CTX_sess_set_get_cb(sc_->ctx_, SSLWrap<TLSWrap>::GetSessionCallback);
   SSL_CTX_sess_set_new_cb(sc_->ctx_, SSLWrap<TLSWrap>::NewSessionCallback);
 
-  stream_->Consume();
-  stream_->set_after_write_cb({ OnAfterWriteImpl, this });
-  stream_->set_alloc_cb({ OnAllocImpl, this });
-  stream_->set_read_cb({ OnReadImpl, this });
-  stream_->set_destruct_cb({ OnDestructImpl, this });
-
-  set_alloc_cb({ OnAllocSelf, this });
-  set_read_cb({ OnReadSelf, this });
+  stream->PushStreamListener(this);
 
   InitSSL();
 }
@@ -100,19 +92,6 @@ TLSWrap::~TLSWrap() {
 #ifdef SSL_CTRL_SET_TLSEXT_SERVERNAME_CB
   sni_context_.Reset();
 #endif  // SSL_CTRL_SET_TLSEXT_SERVERNAME_CB
-
-  // See test/parallel/test-tls-transport-destroy-after-own-gc.js:
-  // If this TLSWrap is garbage collected, we cannot allow callbacks to be
-  // called on this stream.
-
-  if (stream_ == nullptr)
-    return;
-  stream_->set_destruct_cb({ nullptr, nullptr });
-  stream_->set_after_write_cb({ nullptr, nullptr });
-  stream_->set_alloc_cb({ nullptr, nullptr });
-  stream_->set_read_cb({ nullptr, nullptr });
-  stream_->set_destruct_cb({ nullptr, nullptr });
-  stream_->Unconsume();
 }
 
 
@@ -208,15 +187,13 @@ void TLSWrap::Receive(const FunctionCallbackInfo<Value>& args) {
   char* data = Buffer::Data(args[0]);
   size_t len = Buffer::Length(args[0]);
 
-  uv_buf_t buf;
-
   // Copy given buffer entirely or partiall if handle becomes closed
   while (len > 0 && wrap->IsAlive() && !wrap->IsClosing()) {
-    wrap->stream_->EmitAlloc(len, &buf);
+    uv_buf_t buf = wrap->OnStreamAlloc(len);
     size_t copy = buf.len > len ? len : buf.len;
     memcpy(buf.base, data, copy);
     buf.len = copy;
-    wrap->stream_->EmitRead(buf.len, &buf);
+    wrap->OnStreamRead(copy, buf);
 
     data += copy;
     len -= copy;
@@ -253,7 +230,8 @@ void TLSWrap::SSLInfoCallback(const SSL* ssl_, int where, int ret) {
   if (where & SSL_CB_HANDSHAKE_START) {
     Local<Value> callback = object->Get(env->onhandshakestart_string());
     if (callback->IsFunction()) {
-      c->MakeCallback(callback.As<Function>(), 0, nullptr);
+      Local<Value> argv[] = { env->GetNow() };
+      c->MakeCallback(callback.As<Function>(), arraysize(argv), argv);
     }
   }
 
@@ -302,32 +280,36 @@ void TLSWrap::EncOut() {
                                                                  &count);
   CHECK(write_size_ != 0 && count != 0);
 
-  Local<Object> req_wrap_obj =
-      env()->write_wrap_constructor_function()
-          ->NewInstance(env()->context()).ToLocalChecked();
-  WriteWrap* write_req = WriteWrap::New(env(),
-                                        req_wrap_obj,
-                                        stream_);
-
   uv_buf_t buf[arraysize(data)];
+  uv_buf_t* bufs = buf;
   for (size_t i = 0; i < count; i++)
     buf[i] = uv_buf_init(data[i], size[i]);
-  int err = stream_->DoWrite(write_req, buf, count, nullptr);
 
-  // Ignore errors, this should be already handled in js
-  if (err) {
-    write_req->Dispose();
-    InvokeQueued(err);
-  } else {
-    NODE_COUNT_NET_BYTES_SENT(write_size_);
+  StreamWriteResult res = underlying_stream()->Write(bufs, count);
+  if (res.err != 0) {
+    InvokeQueued(res.err);
+    return;
+  }
+
+  NODE_COUNT_NET_BYTES_SENT(write_size_);
+
+  if (!res.async) {
+    // Simulate asynchronous finishing, TLS cannot handle this at the moment.
+    env()->SetImmediate([](Environment* env, void* data) {
+      static_cast<TLSWrap*>(data)->OnStreamAfterWrite(nullptr, 0);
+    }, this, object());
   }
 }
 
 
-void TLSWrap::EncOutAfterWrite(WriteWrap* req_wrap, int status) {
-  // We should not be getting here after `DestroySSL`, because all queued writes
-  // must be invoked with UV_ECANCELED
-  CHECK_NE(ssl_, nullptr);
+void TLSWrap::OnStreamAfterWrite(WriteWrap* req_wrap, int status) {
+  // Report back to the previous listener as well. This is only needed for the
+  // "empty" writes that are passed through directly to the underlying stream.
+  if (req_wrap != nullptr)
+    previous_listener_->OnStreamAfterWrite(req_wrap, status);
+
+  if (ssl_ == nullptr)
+    status = UV_ECANCELED;
 
   // Handle error
   if (status) {
@@ -421,12 +403,11 @@ void TLSWrap::ClearOut() {
     while (read > 0) {
       int avail = read;
 
-      uv_buf_t buf;
-      EmitAlloc(avail, &buf);
+      uv_buf_t buf = EmitAlloc(avail);
       if (static_cast<int>(buf.len) < avail)
         avail = buf.len;
       memcpy(buf.base, current, avail);
-      EmitRead(avail, &buf);
+      EmitRead(avail, buf);
 
       // Caveat emptor: OnRead() calls into JS land which can result in
       // the SSL context object being destroyed.  We have to carefully
@@ -442,7 +423,7 @@ void TLSWrap::ClearOut() {
   int flags = SSL_get_shutdown(ssl_);
   if (!eof_ && flags & SSL_RECEIVED_SHUTDOWN) {
     eof_ = true;
-    EmitRead(UV_EOF, nullptr);
+    EmitRead(UV_EOF);
   }
 
   // We need to check whether an error occurred or the connection was
@@ -524,22 +505,24 @@ AsyncWrap* TLSWrap::GetAsyncWrap() {
 
 
 bool TLSWrap::IsIPCPipe() {
-  return stream_->IsIPCPipe();
+  return underlying_stream()->IsIPCPipe();
 }
 
 
 int TLSWrap::GetFD() {
-  return stream_->GetFD();
+  return underlying_stream()->GetFD();
 }
 
 
 bool TLSWrap::IsAlive() {
-  return ssl_ != nullptr && stream_ != nullptr && stream_->IsAlive();
+  return ssl_ != nullptr &&
+      stream_ != nullptr &&
+      underlying_stream()->IsAlive();
 }
 
 
 bool TLSWrap::IsClosing() {
-  return stream_->IsClosing();
+  return underlying_stream()->IsClosing();
 }
 
 
@@ -589,6 +572,17 @@ int TLSWrap::DoWrite(WriteWrap* w,
     // However, if there is any data that should be written to the socket,
     // the callback should not be invoked immediately
     if (BIO_pending(enc_out_) == 0) {
+      // We destroy the current WriteWrap* object and create a new one that
+      // matches the underlying stream, rather than the TLSWrap itself.
+
+      // Note: We cannot simply use w->object() because of the "optimized"
+      // way in which we read persistent handles; the JS object itself might be
+      // destroyed by w->Dispose(), and the Local<Object> we have is not a
+      // "real" handle in the sense the V8 is aware of its existence.
+      Local<Object> req_wrap_obj =
+          w->GetAsyncWrap()->persistent().Get(env()->isolate());
+      w->Dispose();
+      w = underlying_stream()->CreateWriteWrap(req_wrap_obj);
       return stream_->DoWrite(w, bufs, count, send_handle);
     }
   }
@@ -596,7 +590,6 @@ int TLSWrap::DoWrite(WriteWrap* w,
   // Store the current write wrap
   CHECK_EQ(current_write_, nullptr);
   current_write_ = w;
-  w->Dispatched();
 
   // Write queued data
   if (empty) {
@@ -638,62 +631,16 @@ int TLSWrap::DoWrite(WriteWrap* w,
 }
 
 
-void TLSWrap::OnAfterWriteImpl(WriteWrap* w, int status, void* ctx) {
-  TLSWrap* wrap = static_cast<TLSWrap*>(ctx);
-  wrap->EncOutAfterWrite(w, status);
+uv_buf_t TLSWrap::OnStreamAlloc(size_t suggested_size) {
+  CHECK_NE(ssl_, nullptr);
+
+  size_t size = suggested_size;
+  char* base = crypto::NodeBIO::FromBIO(enc_in_)->PeekWritable(&size);
+  return uv_buf_init(base, size);
 }
 
 
-void TLSWrap::OnAllocImpl(size_t suggested_size, uv_buf_t* buf, void* ctx) {
-  TLSWrap* wrap = static_cast<TLSWrap*>(ctx);
-
-  if (wrap->ssl_ == nullptr) {
-    *buf = uv_buf_init(nullptr, 0);
-    return;
-  }
-
-  size_t size = 0;
-  buf->base = crypto::NodeBIO::FromBIO(wrap->enc_in_)->PeekWritable(&size);
-  buf->len = size;
-}
-
-
-void TLSWrap::OnReadImpl(ssize_t nread,
-                         const uv_buf_t* buf,
-                         uv_handle_type pending,
-                         void* ctx) {
-  TLSWrap* wrap = static_cast<TLSWrap*>(ctx);
-  wrap->DoRead(nread, buf, pending);
-}
-
-
-void TLSWrap::OnDestructImpl(void* ctx) {
-  TLSWrap* wrap = static_cast<TLSWrap*>(ctx);
-  wrap->clear_stream();
-}
-
-
-void TLSWrap::OnAllocSelf(size_t suggested_size, uv_buf_t* buf, void* ctx) {
-  buf->base = node::Malloc(suggested_size);
-  buf->len = suggested_size;
-}
-
-
-void TLSWrap::OnReadSelf(ssize_t nread,
-                         const uv_buf_t* buf,
-                         uv_handle_type pending,
-                         void* ctx) {
-  TLSWrap* wrap = static_cast<TLSWrap*>(ctx);
-  Local<Object> buf_obj;
-  if (buf != nullptr)
-    buf_obj = Buffer::New(wrap->env(), buf->base, buf->len).ToLocalChecked();
-  wrap->EmitData(nread, buf_obj, Local<Object>());
-}
-
-
-void TLSWrap::DoRead(ssize_t nread,
-                     const uv_buf_t* buf,
-                     uv_handle_type pending) {
+void TLSWrap::OnStreamRead(ssize_t nread, const uv_buf_t& buf) {
   if (nread < 0)  {
     // Error should be emitted only after all data was read
     ClearOut();
@@ -705,13 +652,13 @@ void TLSWrap::DoRead(ssize_t nread,
       eof_ = true;
     }
 
-    EmitRead(nread, nullptr);
+    EmitRead(nread);
     return;
   }
 
   // Only client connections can receive data
   if (ssl_ == nullptr) {
-    EmitRead(UV_EPROTO, nullptr);
+    EmitRead(UV_EPROTO);
     return;
   }
 
@@ -729,6 +676,11 @@ void TLSWrap::DoRead(ssize_t nread,
 
   // Cycle OpenSSL's state
   Cycle();
+}
+
+
+ShutdownWrap* TLSWrap::CreateShutdownWrap(Local<Object> req_wrap_object) {
+  return underlying_stream()->CreateShutdownWrap(req_wrap_object);
 }
 
 
@@ -800,6 +752,9 @@ void TLSWrap::DestroySSL(const FunctionCallbackInfo<Value>& args) {
 
   // Destroy the SSL structure and friends
   wrap->SSLWrap<TLSWrap>::DestroySSL();
+
+  if (wrap->stream_ != nullptr)
+    wrap->stream_->RemoveStreamListener(wrap);
 }
 
 

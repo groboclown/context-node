@@ -6,7 +6,10 @@ const fs = require('fs');
 const net = require('net');
 const providers = Object.assign({}, process.binding('async_wrap').Providers);
 const fixtures = require('../common/fixtures');
+const tmpdir = require('../common/tmpdir');
 const { getSystemErrorName } = require('util');
+
+common.crashOnUnhandledRejection();
 
 // Make sure that all Providers are tested.
 {
@@ -139,7 +142,7 @@ if (common.hasCrypto) { // eslint-disable-line crypto-check
 }
 
 {
-  common.refreshTmpDir();
+  tmpdir.refresh();
 
   const server = net.createServer(common.mustCall((socket) => {
     server.close();
@@ -166,6 +169,14 @@ if (common.hasCrypto) { // eslint-disable-line crypto-check
   testInitialized(new Signal(), 'Signal');
 }
 
+{
+  async function openTest() {
+    const fd = await fs.promises.open(__filename, 'r');
+    testInitialized(fd, 'FileHandle');
+    await fd.close();
+  }
+  openTest().then(common.mustCall()).catch(common.mustNotCall());
+}
 
 {
   const binding = process.binding('stream_wrap');
@@ -186,7 +197,6 @@ if (common.hasCrypto) { // eslint-disable-line crypto-check
     const handle = new tcp_wrap.TCP(tcp_wrap.constants.SOCKET);
     const req = new tcp_wrap.TCPConnectWrap();
     const sreq = new stream_wrap.ShutdownWrap();
-    const wreq = new stream_wrap.WriteWrap();
     testInitialized(handle, 'TCP');
     testUninitialized(req, 'TCPConnectWrap');
     testUninitialized(sreq, 'ShutdownWrap');
@@ -195,20 +205,25 @@ if (common.hasCrypto) { // eslint-disable-line crypto-check
       handle.close();
     });
 
-    wreq.handle = handle;
-    wreq.oncomplete = common.mustCall(() => {
-      handle.shutdown(sreq);
-      testInitialized(sreq, 'ShutdownWrap');
-    });
-    wreq.async = true;
-
-    req.oncomplete = common.mustCall(() => {
-      // Use a long string to make sure the write happens asynchronously.
+    req.oncomplete = common.mustCall(writeData);
+    function writeData() {
+      const wreq = new stream_wrap.WriteWrap();
+      wreq.handle = handle;
+      wreq.oncomplete = () => {
+        handle.shutdown(sreq);
+        testInitialized(sreq, 'ShutdownWrap');
+      };
       const err = handle.writeLatin1String(wreq, 'hi'.repeat(100000));
       if (err)
         throw new Error(`write failed: ${getSystemErrorName(err)}`);
+      if (!wreq.async) {
+        testUninitialized(wreq, 'WriteWrap');
+        // Synchronous finish. Write more data until we hit an
+        // asynchronous write.
+        return writeData();
+      }
       testInitialized(wreq, 'WriteWrap');
-    });
+    }
     req.address = common.localhostIPv4;
     req.port = server.address().port;
     const err = handle.connect(req, req.address, req.port);

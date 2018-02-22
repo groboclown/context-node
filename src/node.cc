@@ -240,6 +240,11 @@ bool config_preserve_symlinks = false;
 // that is used by lib/module.js
 bool config_experimental_modules = false;
 
+// Set in node.cc by ParseArgs when --experimental-vm-modules is used.
+// Used in node_config.cc to set a constant on process.binding('config')
+// that is used by lib/vm.js
+bool config_experimental_vm_modules = false;
+
 // Set in node.cc by ParseArgs when --loader is used.
 // Used in node_config.cc to set a constant on process.binding('config')
 // that is used by lib/internal/bootstrap_node.js
@@ -932,6 +937,10 @@ InternalCallbackScope::InternalCallbackScope(Environment* env,
     AsyncWrap::EmitBefore(env, asyncContext.async_id);
   }
 
+  if (!IsInnerMakeCallback()) {
+    env->tick_info()->set_has_thrown(false);
+  }
+
   env->async_hooks()->push_async_ids(async_context_.async_id,
                                async_context_.trigger_async_id);
   pushed_ids_ = true;
@@ -979,6 +988,7 @@ void InternalCallbackScope::Close() {
   Local<Object> process = env_->process_object();
 
   if (env_->tick_callback_function()->Call(process, 0, nullptr).IsEmpty()) {
+    env_->tick_info()->set_has_thrown(true);
     failed_ = true;
   }
 }
@@ -1002,7 +1012,7 @@ MaybeLocal<Value> InternalMakeCallback(Environment* env,
   } else {
     std::vector<Local<Value>> args(1 + argc);
     args[0] = callback;
-    std::copy(&argv[0], &argv[argc], &args[1]);
+    std::copy(&argv[0], &argv[argc], args.begin() + 1);
     ret = domain_cb->Call(env->context(), recv, args.size(), &args[0]);
   }
 
@@ -2598,6 +2608,7 @@ static void EnvGetter(Local<Name> property,
 #else  // _WIN32
   node::TwoByteValue key(isolate, property);
   WCHAR buffer[32767];  // The maximum size allowed for environment variables.
+  SetLastError(ERROR_SUCCESS);
   DWORD result = GetEnvironmentVariableW(reinterpret_cast<WCHAR*>(*key),
                                          buffer,
                                          arraysize(buffer));
@@ -2646,6 +2657,7 @@ static void EnvQuery(Local<Name> property,
 #else  // _WIN32
     node::TwoByteValue key(info.GetIsolate(), property);
     WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
+    SetLastError(ERROR_SUCCESS);
     if (GetEnvironmentVariableW(key_ptr, nullptr, 0) > 0 ||
         GetLastError() == ERROR_SUCCESS) {
       rc = 0;
@@ -3424,6 +3436,8 @@ static void PrintHelp() {
          "  --preserve-symlinks        preserve symbolic links when resolving\n"
          "  --experimental-modules     experimental ES Module support\n"
          "                             and caching modules\n"
+         "  --experimental-vm-modules  experimental ES Module support\n"
+         "                             in vm module\n"
 #endif
          "\n"
          "Environment variables:\n"
@@ -3503,6 +3517,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
     "--napi-modules",
     "--expose-http2",   // keep as a non-op through v9.x
     "--experimental-modules",
+    "--experimental-vm-modules",
     "--loader",
     "--trace-warnings",
     "--redirect-warnings",
@@ -3522,6 +3537,8 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
     "--icu-data-dir",
 
     // V8 options (define with '_', which allows '-' or '_')
+    "--perf_prof",
+    "--perf_basic_prof",
     "--abort_on_uncaught_exception",
     "--max_old_space_size",
     "--stack_trace_limit",
@@ -3670,6 +3687,12 @@ static void ParseArgs(int* argc,
       config_preserve_symlinks = true;
     } else if (strcmp(arg, "--experimental-modules") == 0) {
       config_experimental_modules = true;
+      new_v8_argv[new_v8_argc] = "--harmony-dynamic-import";
+      new_v8_argc += 1;
+      new_v8_argv[new_v8_argc] = "--harmony-import-meta";
+      new_v8_argc += 1;
+    } else if (strcmp(arg, "--experimental-vm-modules") == 0) {
+      config_experimental_vm_modules = true;
     }  else if (strcmp(arg, "--loader") == 0) {
       const char* module = argv[index + 1];
       if (!config_experimental_modules) {
@@ -4184,11 +4207,8 @@ uv_loop_t* GetCurrentEventLoop(v8::Isolate* isolate) {
 }
 
 
-static uv_key_t thread_local_env;
-
-
 void AtExit(void (*cb)(void* arg), void* arg) {
-  auto env = static_cast<Environment*>(uv_key_get(&thread_local_env));
+  auto env = Environment::GetThreadLocalEnv();
   AtExit(env, cb, arg);
 }
 
@@ -4319,8 +4339,6 @@ inline int Start(Isolate* isolate, IsolateData* isolate_data,
   Local<Context> context = NewContext(isolate);
   Context::Scope context_scope(context);
   Environment env(isolate_data, context);
-  CHECK_EQ(0, uv_key_create(&thread_local_env));
-  uv_key_set(&thread_local_env, &env);
   env.Start(argc, argv, exec_argc, exec_argv, v8_is_profiling);
 
   const char* path = argc > 1 ? argv[1] : nullptr;
@@ -4370,7 +4388,6 @@ inline int Start(Isolate* isolate, IsolateData* isolate_data,
 
   const int exit_code = EmitExit(&env);
   RunAtExit(&env);
-  uv_key_delete(&thread_local_env);
 
   v8_platform.DrainVMTasks(isolate);
   v8_platform.CancelVMTasks(isolate);
@@ -4398,7 +4415,7 @@ inline int Start(uv_loop_t* event_loop,
 
   isolate->AddMessageListener(OnMessage);
   isolate->SetAbortOnUncaughtExceptionCallback(ShouldAbortOnUncaughtException);
-  isolate->SetAutorunMicrotasks(false);
+  isolate->SetMicrotasksPolicy(v8::MicrotasksPolicy::kExplicit);
   isolate->SetFatalErrorHandler(OnFatalError);
 
   {

@@ -29,9 +29,9 @@ rl.question('What do you think of Node.js? ', (answer) => {
 });
 ```
 
-*Note*: Once this code is invoked, the Node.js application will not
-terminate until the `readline.Interface` is closed because the interface
-waits for data to be received on the `input` stream.
+Once this code is invoked, the Node.js application will not terminate until the
+`readline.Interface` is closed because the interface waits for data to be
+received on the `input` stream.
 
 ## Class: Interface
 <!-- YAML
@@ -142,7 +142,7 @@ rl.on('SIGCONT', () => {
 });
 ```
 
-*Note*: The `'SIGCONT'` event is _not_ supported on Windows.
+The `'SIGCONT'` event is _not_ supported on Windows.
 
 ### Event: 'SIGINT'
 <!-- YAML
@@ -194,7 +194,7 @@ rl.on('SIGTSTP', () => {
 });
 ```
 
-*Note*: The `'SIGTSTP'` event is _not_ supported on Windows.
+The `'SIGTSTP'` event is _not_ supported on Windows.
 
 ### rl.close()
 <!-- YAML
@@ -262,8 +262,8 @@ rl.question('What is your favorite food? ', (answer) => {
 });
 ```
 
-*Note*: The `callback` function passed to `rl.question()` does not follow the
-typical pattern of accepting an `Error` object or `null` as the first argument.
+The `callback` function passed to `rl.question()` does not follow the typical
+pattern of accepting an `Error` object or `null` as the first argument.
 The `callback` is called with the provided answer as the only argument.
 
 ### rl.resume()
@@ -315,15 +315,15 @@ rl.write('Delete this!');
 rl.write(null, { ctrl: true, name: 'u' });
 ```
 
-*Note*: The `rl.write()` method will write the data to the `readline`
-Interface's `input` *as if it were provided by the user*.
+The `rl.write()` method will write the data to the `readline` Interface's
+`input` *as if it were provided by the user*.
 
 ## readline.clearLine(stream, dir)
 <!-- YAML
 added: v0.7.7
 -->
 
-* `stream` {Writable}
+* `stream` {stream.Writable}
 * `dir` {number}
   * `-1` - to the left from cursor
   * `1` - to the right from cursor
@@ -338,7 +338,7 @@ in a specified direction identified by `dir`.
 added: v0.7.7
 -->
 
-* `stream` {Writable}
+* `stream` {stream.Writable}
 
 The `readline.clearScreenDown()` method clears the given [TTY][] stream from
 the current position of the cursor down.
@@ -362,9 +362,9 @@ changes:
 -->
 
 * `options` {Object}
-  * `input` {Readable} The [Readable][] stream to listen to. This option is
+  * `input` {stream.Readable} The [Readable][] stream to listen to. This option is
     *required*.
-  * `output` {Writable} The [Writable][] stream to write readline data to.
+  * `output` {stream.Writable} The [Writable][] stream to write readline data to.
   * `completer` {Function} An optional function used for Tab autocompletion.
   * `terminal` {boolean} `true` if the `input` and `output` streams should be
     treated like a TTY, and have ANSI/VT100 escape codes written to it.
@@ -444,7 +444,7 @@ function completer(linePartial, callback) {
 added: v0.7.7
 -->
 
-* `stream` {Writable}
+* `stream` {stream.Writable}
 * `x` {number}
 * `y` {number}
 
@@ -456,7 +456,7 @@ given [TTY][] `stream`.
 added: v0.7.7
 -->
 
-* `stream` {Readable}
+* `stream` {stream.Readable}
 * `interface` {readline.Interface}
 
 The `readline.emitKeypressEvents()` method causes the given [Readable][]
@@ -467,8 +467,8 @@ autocompletion is disabled when copy-pasted input is detected.
 
 If the `stream` is a [TTY][], then it must be in raw mode.
 
-*Note*: This is automatically called by any readline instance on its `input`
-if the `input` is a terminal. Closing the `readline` instance does not stop
+This is automatically called by any readline instance on its `input` if the
+`input` is a terminal. Closing the `readline` instance does not stop
 the `input` from emitting `'keypress'` events.
 
 ```js
@@ -482,7 +482,7 @@ if (process.stdin.isTTY)
 added: v0.7.7
 -->
 
-* `stream` {Writable}
+* `stream` {stream.Writable}
 * `dx` {number}
 * `dy` {number}
 

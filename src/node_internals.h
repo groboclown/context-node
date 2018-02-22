@@ -121,6 +121,7 @@ struct sockaddr;
     V(signal_wrap)                                                            \
     V(spawn_sync)                                                             \
     V(stream_wrap)                                                            \
+    V(string_decoder)                                                         \
     V(tcp_wrap)                                                               \
     V(timer_wrap)                                                             \
     V(trace_events)                                                           \
@@ -172,6 +173,11 @@ extern bool config_preserve_symlinks;
 // Used in node_config.cc to set a constant on process.binding('config')
 // that is used by lib/module.js
 extern bool config_experimental_modules;
+
+// Set in node.cc by ParseArgs when --experimental-vm-modules is used.
+// Used in node_config.cc to set a constant on process.binding('config')
+// that is used by lib/vm.js
+extern bool config_experimental_vm_modules;
 
 // Set in node.cc by ParseArgs when --loader is used.
 // Used in node_config.cc to set a constant on process.binding('config')
